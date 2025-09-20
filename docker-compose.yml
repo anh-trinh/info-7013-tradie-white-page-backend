@@ -102,25 +102,28 @@ services:
   review-service:
     build: ./services/review-service
     container_name: review-service
-    depends_on:
-      - review-db
+    restart: unless-stopped
     environment:
-      - PORT=3001
       - DB_HOST=review-db
-      - DB_USER=root
-      - DB_PASS=root
+      - DB_USER=your_user
+      - DB_PASSWORD=your_password
       - DB_NAME=review_db
+      - PORT=3000
     networks:
       - tradie-network
+    depends_on:
+      - review-db
 
   review-db:
-    image: mysql:8
+    image: mysql:8.0
     container_name: review-db
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: root
+      - MYSQL_DATABASE=review_db
+      - MYSQL_USER=your_user
+      - MYSQL_PASSWORD=your_password
+      - MYSQL_ROOT_PASSWORD=your_root_password
     volumes:
-      - ./services/review-service/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    ports:
-      - "3309:3306"
+      - review-db-data:/var/lib/mysql
     networks:
       - tradie-network
