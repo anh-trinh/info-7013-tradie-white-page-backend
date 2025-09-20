@@ -1,12 +1,10 @@
-CREATE DATABASE IF NOT EXISTS review_db;
-USE review_db;
 CREATE TABLE IF NOT EXISTS reviews (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  booking_id INT UNIQUE,
-  resident_account_id BIGINT,
-  tradie_account_id BIGINT,
-  rating INT,
-  comment TEXT,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    booking_id INT NOT NULL UNIQUE,
+    resident_account_id INT NOT NULL,
+    tradie_account_id INT NOT NULL,
+    rating INT NOT NULL,
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
