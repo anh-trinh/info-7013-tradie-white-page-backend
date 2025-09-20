@@ -13,6 +13,11 @@
 |
 */
 
-$router->get('/', function () use ($router) {
-    return $router->app->version();
+$router->group(['prefix' => 'api/notifications'], function () use ($router) {
+    $router->get('/', function () use ($router) {
+        return response()->json(['service' => 'notification', 'version' => $router->app->version()]);
+    });
+    $router->get('/health', function () {
+        return response()->json(['status' => 'healthy']);
+    });
 });

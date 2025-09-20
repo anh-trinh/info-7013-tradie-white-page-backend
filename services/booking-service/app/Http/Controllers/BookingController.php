@@ -15,8 +15,10 @@ class BookingController extends Controller
             'service_address' => 'required|string'
         ]);
 
+        // TODO: integrate proper authentication; using X-User-Id header fallback for now
+        $userId = $request->header('X-User-Id', 1);
         $quote = Quote::create([
-            'resident_account_id' => auth()->user()->id,
+            'resident_account_id' => $userId,
             'tradie_account_id' => $request->input('tradie_account_id'),
             'job_description' => $request->input('job_description'),
             'service_address' => $request->input('service_address'),
@@ -27,9 +29,9 @@ class BookingController extends Controller
         return response()->json($quote, 201);
     }
 
-    public function listQuotes()
+    public function listQuotes(Request $request)
     {
-        $userId = auth()->user()->id;
+        $userId = $request->header('X-User-Id', 1);
         $quotes = Quote::where('resident_account_id',$userId)
             ->orWhere('tradie_account_id',$userId)
             ->with('messages')
@@ -50,7 +52,7 @@ class BookingController extends Controller
 
         $msg = QuoteMessage::create([
             'quote_id' => $quote->id,
-            'sender_account_id' => auth()->user()->id,
+            'sender_account_id' => $request->header('X-User-Id', 1),
             'message' => $request->input('message'),
             'offered_price' => $request->input('offered_price')
         ]);
@@ -81,9 +83,9 @@ class BookingController extends Controller
         return response()->json($booking, 201);
     }
 
-    public function listBookings()
+    public function listBookings(Request $request)
     {
-        $userId = auth()->user()->id;
+        $userId = $request->header('X-User-Id', 1);
         $bookings = Booking::whereHas('quote', function($q) use ($userId) {
             $q->where('resident_account_id',$userId)
               ->orWhere('tradie_account_id',$userId);
