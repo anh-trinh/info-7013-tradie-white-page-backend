@@ -29,7 +29,7 @@ class BookingController extends Controller
         return response()->json($quote, 201);
     }
 
-    public function listQuotes(Request $request)
+    public function getQuotes(Request $request)
     {
         $userId = $request->header('X-User-Id', 1);
         $quotes = Quote::where('resident_account_id',$userId)
@@ -83,7 +83,7 @@ class BookingController extends Controller
         return response()->json($booking, 201);
     }
 
-    public function listBookings(Request $request)
+    public function getJobs(Request $request)
     {
         $userId = $request->header('X-User-Id', 1);
         $bookings = Booking::whereHas('quote', function($q) use ($userId) {
@@ -93,7 +93,7 @@ class BookingController extends Controller
         return response()->json($bookings);
     }
 
-    public function updateStatus($id, Request $request)
+    public function updateJobStatus($id, Request $request)
     {
         $this->validate($request, [
             'status' => 'required|in:scheduled,in_progress,completed,cancelled'

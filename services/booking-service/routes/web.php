@@ -14,15 +14,11 @@
 */
 
 $router->group(['prefix' => 'api'], function () use ($router) {
-    // Quotes
     $router->post('quotes', 'BookingController@createQuote');
-    $router->get('quotes', 'BookingController@listQuotes');
-    $router->post('quotes/{id}/respond', 'BookingController@respondQuote');
-
-    // Bookings
+    $router->get('quotes', 'BookingController@getQuotes');
     $router->post('bookings', 'BookingController@createBooking');
-    $router->get('bookings', 'BookingController@listBookings');
-    $router->put('bookings/{id}/status', 'BookingController@updateStatus');
+    $router->get('bookings', 'BookingController@getJobs');
+    $router->put('bookings/{id}/status', 'BookingController@updateJobStatus');
 });
 $router->get('/', function () use ($router) {
     return response()->json(['service' => 'booking', 'version' => $router->app->version()]);
