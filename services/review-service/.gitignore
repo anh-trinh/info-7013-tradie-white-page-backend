@@ -1,0 +1,8 @@
+.env
+node_modules/
+dist/
+build/
+.cache/
+npm-debug.log*
+yarn-*.log
+pnpm-debug.log*
