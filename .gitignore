@@ -1,0 +1,53 @@
+# OS / Editor
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+.vscode/
+.idea/
+
+# Logs
+*.log
+logs/
+**/logs/
+
+# Environment files
+.env
+.env.*
+**/.env
+**/.env.*
+
+# Node.js
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+.dist/
+dist/
+build/
+.cache/
+.nyc_output/
+.eslintcache
+
+# PHP / Composer
+vendor/
+**/vendor/
+composer.phar
+.phpunit.result.cache
+.phpunit.cache/
+.php-cs-fixer.cache
+
+# Laravel / Lumen
+bootstrap/cache/
+**/bootstrap/cache/
+storage/
+**/storage/
+storage/*.key
+
+# Coverage
+coverage/
+**/coverage/
