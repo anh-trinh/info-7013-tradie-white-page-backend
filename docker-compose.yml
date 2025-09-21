@@ -110,11 +110,9 @@ services:
     container_name: review-service
     restart: unless-stopped
     environment:
-      - DB_HOST=review-db
-      - DB_USER=your_user
-      - DB_PASSWORD=your_password
-      - DB_NAME=review_db
-      - PORT=3000
+      - DATABASE_URL=mysql+pymysql://root:root@review-db:3306/review_db
+    ports:
+      - "8001:8000"
     networks:
       - tradie-network
     depends_on:
