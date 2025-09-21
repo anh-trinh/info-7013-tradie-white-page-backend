@@ -5,8 +5,16 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 
+# System deps for building wheels (uvloop, httptools, cryptography) and MySQL client
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential python3-dev \
+    libssl-dev libffi-dev cargo \
+    default-libmysqlclient-dev pkg-config \
+ && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir -r requirements.txt
 
 COPY ./app /app
 

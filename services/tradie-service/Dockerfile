@@ -1,9 +1,9 @@
 FROM php:8.2-cli-alpine
 WORKDIR /var/www/html
 
-# Install PHP extensions required by Lumen (PDO MySQL)
-RUN apk add --no-cache linux-headers \
- && docker-php-ext-install pdo pdo_mysql
+# Install PHP extensions required by Lumen
+RUN apk add --no-cache linux-headers oniguruma-dev \
+ && docker-php-ext-install pdo pdo_mysql mbstring
 
 # Install Composer
 RUN apk add --no-cache curl git unzip \
