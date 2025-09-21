@@ -21,6 +21,11 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         $router->get('/accounts/me', 'AccountController@me');
         $router->put('/accounts/me', 'AccountController@updateProfile');
 
+        // Internal endpoint for API Gateway to validate token
+        $router->get('/accounts/validate', function () {
+            return response('Token is valid.', 200);
+        });
+
         $router->group(['prefix' => 'admin'], function () use ($router) {
             $router->get('/accounts', 'AccountController@getAllAccounts');
             $router->put('/accounts/{id}/status', 'AccountController@updateAccountStatus');
