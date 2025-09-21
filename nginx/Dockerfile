@@ -1,7 +1,11 @@
 FROM nginx:stable-alpine
 
-# remove default site
-RUN rm /etc/nginx/conf.d/default.conf
+# Remove default site
+RUN rm -f /etc/nginx/conf.d/default.conf
 
-# copy custom config
-COPY nginx.conf /etc/nginx/conf.d/
+# Copy local docker site config as default
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# Also provide Railway-friendly configs (optional)
+COPY templates/railway.nginx.conf /etc/nginx/nginx.conf
+COPY templates/site.conf /etc/nginx/conf.d/site.conf
