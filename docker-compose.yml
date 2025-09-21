@@ -64,14 +64,13 @@ services:
       - tradie-network
 
   booking-db:
-    image: mysql:8
+    image: mysql:8.0
     container_name: booking-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: booking_db
-      MYSQL_USER: your_user
-      MYSQL_PASSWORD: your_password
-      MYSQL_ROOT_PASSWORD: your_root_password
+      - MYSQL_DATABASE=booking_db
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST=%
     ports:
       - "3308:3306"
     volumes:
@@ -102,8 +101,8 @@ services:
       - DB_HOST=booking-db
       - DB_PORT=3306
       - DB_DATABASE=booking_db
-      - DB_USERNAME=your_user
-      - DB_PASSWORD=your_password
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
     networks:
       - tradie-network
 
@@ -127,6 +126,7 @@ services:
     environment:
       - MYSQL_DATABASE=review_db
       - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST=%
     ports:
       - "3309:3306"
     volumes:
@@ -140,9 +140,7 @@ services:
     restart: unless-stopped
     environment:
       - MYSQL_DATABASE=account_db
-      - MYSQL_USER=your_user
-      - MYSQL_PASSWORD=your_password
-      - MYSQL_ROOT_PASSWORD=your_root_password
+      - MYSQL_ROOT_PASSWORD=root
     ports:
       - "3310:3306"
     volumes:
@@ -160,8 +158,8 @@ services:
       - DB_HOST=account-db
       - DB_PORT=3306
       - DB_DATABASE=account_db
-      - DB_USERNAME=your_user
-      - DB_PASSWORD=your_password
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
     networks:
       - tradie-network
 
@@ -171,9 +169,7 @@ services:
     restart: unless-stopped
     environment:
       - MYSQL_DATABASE=tradie_db
-      - MYSQL_USER=your_user
-      - MYSQL_PASSWORD=your_password
-      - MYSQL_ROOT_PASSWORD=your_root_password
+      - MYSQL_ROOT_PASSWORD=root
     ports:
       - "3311:3306"
     volumes:
@@ -191,8 +187,8 @@ services:
       - DB_HOST=tradie-db
       - DB_PORT=3306
       - DB_DATABASE=tradie_db
-      - DB_USERNAME=your_user
-      - DB_PASSWORD=your_password
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
     networks:
       - tradie-network
 

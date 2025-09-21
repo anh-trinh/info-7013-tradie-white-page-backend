@@ -2,13 +2,25 @@ FROM php:8.2-cli-alpine
 WORKDIR /var/www/html
 
 # Install PHP extensions required by Lumen (PDO MySQL)
-RUN docker-php-ext-install pdo pdo_mysql
+RUN apk add --no-cache linux-headers \
+ && docker-php-ext-install pdo pdo_mysql sockets
+
+# Install Composer
+RUN apk add --no-cache curl git unzip \
+ && curl -sS https://getcomposer.org/installer -o composer-setup.php \
+ && php composer-setup.php --install-dir=/usr/bin --filename=composer \
+ && rm composer-setup.php
 
 # Copy application source (including vendor if present)
 COPY . .
+# Install PHP dependencies at build time
+RUN composer update --no-dev --prefer-dist --no-interaction --ignore-platform-req=ext-sockets \
+ && composer dump-autoload -o
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 # Expose the port the PHP built-in server will use
 EXPOSE 80
 
 # Start Lumen using PHP's built-in server
-CMD ["php", "-S", "0.0.0.0:80", "-t", "public"]
+CMD ["sh", "/entrypoint.sh"]

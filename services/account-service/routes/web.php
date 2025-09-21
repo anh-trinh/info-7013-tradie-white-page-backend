@@ -37,3 +37,10 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         });
     });
 });
+
+$router->get('/', function () use ($router) {
+    return response()->json(['service' => 'account', 'version' => $router->app->version()]);
+});
+$router->get('/health', function () {
+    return response()->json(['status' => 'healthy']);
+});

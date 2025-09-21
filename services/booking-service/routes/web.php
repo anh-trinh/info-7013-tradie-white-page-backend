@@ -19,6 +19,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('bookings', 'BookingController@createBooking');
     $router->get('bookings', 'BookingController@getJobs');
     $router->put('bookings/{id}/status', 'BookingController@updateJobStatus');
+    $router->put('quotes/{id}/accept', 'BookingController@acceptQuote');
 
     $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
         $router->get('bookings', 'BookingController@getAllJobsForAdmin');

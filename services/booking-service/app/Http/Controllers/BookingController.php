@@ -5,6 +5,7 @@ use App\Models\Quote;
 use App\Models\Booking;
 use App\Models\QuoteMessage;
 use App\Services\RabbitMQService;
+use Carbon\Carbon;
 
 class BookingController extends Controller
 {
@@ -61,6 +62,14 @@ class BookingController extends Controller
         return response()->json(['quote'=>$quote,'message'=>$msg],200);
     }
 
+    public function acceptQuote($id)
+    {
+        $quote = Quote::findOrFail($id);
+        $quote->status = 'accepted';
+        $quote->save();
+        return response()->json($quote);
+    }
+
     public function createBooking(Request $request)
     {
         $this->validate($request, [
@@ -74,10 +83,17 @@ class BookingController extends Controller
             return response()->json(['message'=>'Quote must be accepted before creating booking'], 400);
         }
 
+        // Normalize scheduled_at to MySQL DATETIME format
+        try {
+            $scheduledAt = Carbon::parse($request->input('scheduled_at'))->toDateTimeString();
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Invalid scheduled_at datetime'], 422);
+        }
+
         $booking = Booking::create([
             'quote_id' => $quote->id,
             'final_price' => $request->input('final_price'),
-            'scheduled_at' => $request->input('scheduled_at'),
+            'scheduled_at' => $scheduledAt,
             'status' => 'scheduled'
         ]);
 
