@@ -5,6 +5,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use App\Services\RabbitMQService;
 
 class AccountController extends Controller
 {
@@ -22,6 +23,12 @@ class AccountController extends Controller
         $user->fill($request->all());
         $user->password = Hash::make($request->input('password'));
         $user->save();
+
+        // Publish account_registered event
+        (new RabbitMQService())->publishEvent('account_registered', [
+            'email' => $user->email,
+            'first_name' => $user->first_name,
+        ]);
 
         return response()->json(['message' => 'User registered successfully'], 201);
     }

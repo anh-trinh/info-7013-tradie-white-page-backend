@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use App\Models\Quote;
 use App\Models\Booking;
 use App\Models\QuoteMessage;
+use App\Services\RabbitMQService;
 
 class BookingController extends Controller
 {
@@ -80,6 +81,9 @@ class BookingController extends Controller
             'status' => 'scheduled'
         ]);
 
+        (new RabbitMQService())->publishEvent('booking_created', [
+            'booking_id' => $booking->id,
+        ]);
         return response()->json($booking, 201);
     }
 
@@ -102,6 +106,12 @@ class BookingController extends Controller
         $booking = Booking::findOrFail($id);
         $booking->status = $request->input('status');
         $booking->save();
+
+        if ($booking->status === 'completed') {
+            (new RabbitMQService())->publishEvent('job_completed', [
+                'booking_id' => $booking->id,
+            ]);
+        }
 
         return response()->json($booking);
     }

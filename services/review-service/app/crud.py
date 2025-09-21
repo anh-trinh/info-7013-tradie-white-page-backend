@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 import models, schemas
+import rabbitmq_client
 
 
 def create_review(db: Session, review: schemas.ReviewCreate):
@@ -7,6 +8,13 @@ def create_review(db: Session, review: schemas.ReviewCreate):
     db.add(db_review)
     db.commit()
     db.refresh(db_review)
+    rabbitmq_client.publish('notifications_queue', {
+        'pattern': 'review_submitted',
+        'data': {
+            'review_id': db_review.id,
+            'rating': db_review.rating,
+        }
+    })
     return db_review
 
 

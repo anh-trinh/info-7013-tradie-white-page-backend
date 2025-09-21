@@ -8,45 +8,29 @@ export class AppController {
 
   @EventPattern('account_registered')
   async handleAccountRegistered(
-    @Payload() data: { email: string; name: string },
+    @Payload() data: { email?: string; first_name?: string; name?: string },
   ): Promise<void> {
-    if (
-      !data ||
-      typeof data.email !== 'string' ||
-      typeof data.name !== 'string'
-    ) {
-      // Safely throw an error
-      throw new Error('Invalid payload for account_registered event');
-    }
-    console.log('Received account_registered event:', data);
-    await this.appService.sendWelcomeEmail(
-      data as { email: string; name: string },
-    );
+    if (!data || typeof data.email !== 'string') return;
+    const name = data.first_name ?? data.name ?? '';
+    console.log('EVENT: account_registered', { email: data.email, name });
+    await this.appService.sendWelcomeEmail({ email: data.email, name });
   }
 
   @EventPattern('booking_created')
-  async handleBookingCreated(
-    @Payload()
-    data: {
-      bookingId: string;
-      userEmail: string;
-      [key: string]: any;
-    },
-  ) {
-    if (
-      !data ||
-      typeof data.bookingId !== 'string' ||
-      typeof data.userEmail !== 'string'
-    ) {
-      throw new Error('Invalid payload for booking_created event');
-    }
-    console.log('Received booking_created event:', data);
-    // TODO: Call service to send booking notification email
+  async handleBookingCreated(@Payload() data: any) {
+    console.log('EVENT: booking_created', data);
+    // TODO: send booking notification email
   }
 
   @EventPattern('job_completed')
   async handleJobCompleted(@Payload() data: any) {
-    console.log('Received job_completed event:', data);
-    // TODO: Call service to send job completion notification email
+    console.log('EVENT: job_completed', data);
+    // TODO: send job completion notification email
+  }
+
+  @EventPattern('review_submitted')
+  async handleReviewSubmitted(@Payload() data: any) {
+    console.log('EVENT: review_submitted', data);
+    // TODO: send thank-you email
   }
 }

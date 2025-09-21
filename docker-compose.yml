@@ -129,6 +129,8 @@ services:
       - MYSQL_USER=your_user
       - MYSQL_PASSWORD=your_password
       - MYSQL_ROOT_PASSWORD=your_root_password
+    ports:
+      - "3309:3306"
     volumes:
       - review-db-data:/var/lib/mysql
     networks:
@@ -143,6 +145,8 @@ services:
       - MYSQL_USER=your_user
       - MYSQL_PASSWORD=your_password
       - MYSQL_ROOT_PASSWORD=your_root_password
+    ports:
+      - "3310:3306"
     volumes:
       - account-db-data:/var/lib/mysql
     networks:
@@ -172,6 +176,8 @@ services:
       - MYSQL_USER=your_user
       - MYSQL_PASSWORD=your_password
       - MYSQL_ROOT_PASSWORD=your_root_password
+    ports:
+      - "3311:3306"
     volumes:
       - tradie-db-data:/var/lib/mysql
     networks:
