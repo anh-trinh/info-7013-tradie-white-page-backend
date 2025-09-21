@@ -56,6 +56,7 @@ services:
     environment:
       MYSQL_DATABASE: notification
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_ROOT_HOST: "%"
     ports:
       - "3307:3306"
     volumes:
@@ -141,6 +142,7 @@ services:
     environment:
       - MYSQL_DATABASE=account_db
       - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST=%
     ports:
       - "3310:3306"
     volumes:
@@ -170,6 +172,7 @@ services:
     environment:
       - MYSQL_DATABASE=tradie_db
       - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_ROOT_HOST=%
     ports:
       - "3311:3306"
     volumes:

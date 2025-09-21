@@ -32,4 +32,4 @@ if [ -f /var/www/html/artisan ]; then
   php artisan migrate --force || true
 fi
 
-exec php -S 0.0.0.0:80 -t public
+exec php -S 0.0.0.0:80 -t public public/index.php
