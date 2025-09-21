@@ -36,18 +36,16 @@ services:
   notification-service:
     build: ./services/notification-service
     container_name: notification-service
-    command: php -S 0.0.0.0:8000 -t public
     depends_on:
       - message-broker
       - notification-db
     environment:
-      - DB_CONNECTION=mysql
       - DB_HOST=notification-db
       - DB_PORT=3306
-      - DB_DATABASE=notification
-      - DB_USERNAME=root
+      - DB_NAME=notification
+      - DB_USER=root
       - DB_PASSWORD=root
-      - MESSAGE_BROKER_HOST=message-broker
+      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
     networks:
       - tradie-network
 

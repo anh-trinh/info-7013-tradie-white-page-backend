@@ -1,8 +1,9 @@
+
 # Stage 1: Build the application
 FROM node:18-alpine AS builder
 WORKDIR /usr/src/app
-COPY package*.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+RUN npm install && npm install --save @nestjs/typeorm typeorm mysql2 @nestjs/microservices
 COPY . .
 RUN npm run build
 

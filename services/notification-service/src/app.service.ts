@@ -1,4 +1,3 @@
-
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -15,7 +14,9 @@ export class AppService {
   ) {}
 
   async sendWelcomeEmail(data: { email: string; name: string }): Promise<void> {
-    const template = await this.templatesRepository.findOneBy({ name: 'welcome_email' });
+    const template = await this.templatesRepository.findOneBy({
+      name: 'welcome_email',
+    });
 
     if (!template) {
       console.error('Welcome email template not found!');
