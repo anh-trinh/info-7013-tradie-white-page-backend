@@ -1,12 +1,14 @@
-
-FROM php:8.2-cli-alpine
-WORKDIR /var/www
+# Stage 1: Build the application
+FROM node:18-alpine AS builder
+WORKDIR /usr/src/app
+COPY package*.json ./
+RUN npm install
 COPY . .
-RUN apk add --no-cache libzip-dev unzip \
-    && docker-php-ext-install pdo_mysql \
-    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && composer install
-EXPOSE 8000
-COPY docker/start.sh /usr/local/bin/start.sh
-RUN chmod +x /usr/local/bin/start.sh
-CMD ["/usr/local/bin/start.sh"]
+RUN npm run build
+
+# Stage 2: Create the production image
+FROM node:18-alpine
+WORKDIR /usr/src/app
+COPY --from=builder /usr/src/app/node_modules ./node_modules
+COPY --from=builder /usr/src/app/dist ./dist
+CMD ["node", "dist/main"]
