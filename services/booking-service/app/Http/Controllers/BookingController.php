@@ -105,4 +105,28 @@ class BookingController extends Controller
 
         return response()->json($booking);
     }
+
+    public function getAllJobsForAdmin()
+    {
+        return response()->json(Booking::with('quote')->latest()->get());
+    }
+
+    public function getJobDetailsForAdmin($id)
+    {
+        $booking = Booking::with(['quote.messages'])->findOrFail($id);
+        return response()->json($booking);
+    }
+
+    public function updateJobStatusByAdmin(Request $request, $id)
+    {
+        $this->validate($request, [
+            'status' => 'required|in:scheduled,in_progress,completed,cancelled'
+        ]);
+
+        $booking = Booking::findOrFail($id);
+        $booking->status = $request->input('status');
+        $booking->save();
+
+        return response()->json($booking);
+    }
 }

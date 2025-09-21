@@ -77,9 +77,9 @@ $app->configure('database');
 //     App\Http\Middleware\ExampleMiddleware::class
 // ]);
 
-// $app->routeMiddleware([
-//     'auth' => App\Http\Middleware\Authenticate::class,
-// ]);
+$app->routeMiddleware([
+    'admin' => App\Http\Middleware\AdminMiddleware::class,
+]);
 
 /*
 |--------------------------------------------------------------------------

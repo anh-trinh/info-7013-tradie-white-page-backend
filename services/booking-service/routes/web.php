@@ -19,6 +19,12 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('bookings', 'BookingController@createBooking');
     $router->get('bookings', 'BookingController@getJobs');
     $router->put('bookings/{id}/status', 'BookingController@updateJobStatus');
+
+    $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
+        $router->get('bookings', 'BookingController@getAllJobsForAdmin');
+        $router->get('bookings/{id}', 'BookingController@getJobDetailsForAdmin');
+        $router->put('bookings/{id}/status', 'BookingController@updateJobStatusByAdmin');
+    });
 });
 $router->get('/', function () use ($router) {
     return response()->json(['service' => 'booking', 'version' => $router->app->version()]);

@@ -21,14 +21,19 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         $router->get('/accounts/me', 'AccountController@me');
         $router->put('/accounts/me', 'AccountController@updateProfile');
 
-        // Internal endpoint for API Gateway to validate token
+        // Internal endpoint for API Gateway to validate token and extract user context
         $router->get('/accounts/validate', function () {
-            return response('Token is valid.', 200);
+            $user = \Illuminate\Support\Facades\Auth::user();
+            return response('Token is valid.', 200)
+                ->header('X-User-Id', $user ? $user->id : '')
+                ->header('X-User-Role', $user ? ($user->role ?? '') : '');
         });
 
-        $router->group(['prefix' => 'admin'], function () use ($router) {
+        $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
             $router->get('/accounts', 'AccountController@getAllAccounts');
+            $router->get('/accounts/{id}', 'AccountController@getAccountById');
             $router->put('/accounts/{id}/status', 'AccountController@updateAccountStatus');
+            $router->delete('/accounts/{id}', 'AccountController@deleteAccount');
         });
     });
 });

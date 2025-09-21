@@ -55,9 +55,18 @@ class AccountController extends Controller
         return response()->json($user);
     }
 
-    public function getAllAccounts()
+    public function getAllAccounts(Request $request)
     {
-        return response()->json(User::all());
+        $query = User::query();
+        if ($request->has('role')) {
+            $query->where('role', $request->input('role'));
+        }
+        return response()->json($query->get());
+    }
+
+    public function getAccountById($id)
+    {
+        return response()->json(User::findOrFail($id));
     }
 
     public function updateAccountStatus($id, Request $request)
@@ -69,6 +78,13 @@ class AccountController extends Controller
         $user->status = $request->input('status');
         $user->save();
         return response()->json($user);
+    }
+
+    public function deleteAccount($id)
+    {
+        $user = User::findOrFail($id);
+        $user->delete();
+        return response()->json(['message' => 'Account deleted successfully'], 200);
     }
 
     protected function respondWithToken($token)

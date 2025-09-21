@@ -7,7 +7,7 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('/tradies/{id}', 'TradieController@getById');
     $router->get('/services', 'CategoryController@getAll');
 
-    $router->group(['prefix' => 'admin'], function () use ($router) {
+    $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
         $router->get('/categories', 'CategoryController@getAll');
         $router->post('/categories', 'CategoryController@create');
         $router->put('/categories/{id}', 'CategoryController@update');
