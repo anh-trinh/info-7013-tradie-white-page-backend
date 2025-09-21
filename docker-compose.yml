@@ -126,9 +126,7 @@ services:
     restart: unless-stopped
     environment:
       - MYSQL_DATABASE=review_db
-      - MYSQL_USER=your_user
-      - MYSQL_PASSWORD=your_password
-      - MYSQL_ROOT_PASSWORD=your_root_password
+      - MYSQL_ROOT_PASSWORD=root
     ports:
       - "3309:3306"
     volumes:
