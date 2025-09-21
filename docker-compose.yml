@@ -52,6 +52,7 @@ services:
   notification-db:
     image: mysql:8
     container_name: notification-db
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: notification
       MYSQL_ROOT_PASSWORD: root
@@ -65,6 +66,7 @@ services:
   booking-db:
     image: mysql:8
     container_name: booking-db
+    restart: unless-stopped
     environment:
       MYSQL_DATABASE: booking_db
       MYSQL_USER: your_user
@@ -135,6 +137,7 @@ services:
   account-db:
     image: mysql:8.0
     container_name: account-db
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=account_db
       - MYSQL_USER=your_user
@@ -163,6 +166,7 @@ services:
   tradie-db:
     image: mysql:8.0
     container_name: tradie-db
+    restart: unless-stopped
     environment:
       - MYSQL_DATABASE=tradie_db
       - MYSQL_USER=your_user
