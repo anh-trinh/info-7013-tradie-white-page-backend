@@ -70,6 +70,16 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
+## Environment variables (this service)
+
+This service is a RabbitMQ worker (no HTTP API). It stores templates/logs in MySQL via TypeORM.
+
+- RABBITMQ_URL: amqp(s) connection string to your broker (e.g., CloudAMQP)
+- DB_HOST, DB_PORT, DB_USERNAME, DB_PASSWORD, DB_DATABASE: MySQL connection for TypeORM
+
+Notes:
+- In Docker Compose, DB_HOST can be the service name (e.g., notification-db). On Railway, use the database plugin variables.
+
 ## Resources
 
 Check out a few resources that may come in handy when working with NestJS:

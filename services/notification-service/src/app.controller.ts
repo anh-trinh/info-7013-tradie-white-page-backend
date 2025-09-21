@@ -2,7 +2,7 @@ import { Controller } from '@nestjs/common';
 import { EventPattern, Payload } from '@nestjs/microservices';
 import { AppService } from './app.service';
 
-@Controller()
+@Controller('api/notifications')
 export class AppController {
   constructor(private readonly appService: AppService) {}
 
@@ -17,20 +17,23 @@ export class AppController {
   }
 
   @EventPattern('booking_created')
-  async handleBookingCreated(@Payload() data: any) {
+  async handleBookingCreated(@Payload() payload: unknown) {
+    const data = (payload ?? {}) as Record<string, unknown>;
     console.log('EVENT: booking_created', data);
-    // TODO: send booking notification email
+    await this.appService.logBookingCreated(data);
   }
 
   @EventPattern('job_completed')
-  async handleJobCompleted(@Payload() data: any) {
+  async handleJobCompleted(@Payload() payload: unknown) {
+    const data = (payload ?? {}) as Record<string, unknown>;
     console.log('EVENT: job_completed', data);
-    // TODO: send job completion notification email
+    await this.appService.logJobCompleted(data);
   }
 
   @EventPattern('review_submitted')
-  async handleReviewSubmitted(@Payload() data: any) {
+  async handleReviewSubmitted(@Payload() payload: unknown) {
+    const data = (payload ?? {}) as Record<string, unknown>;
     console.log('EVENT: review_submitted', data);
-    // TODO: send thank-you email
+    await this.appService.logReviewSubmitted(data);
   }
 }
