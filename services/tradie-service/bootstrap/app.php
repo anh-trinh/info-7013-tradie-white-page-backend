@@ -61,7 +61,6 @@ $app->singleton(
 
 $app->configure('app');
 $app->configure('database');
-$app->configure('auth');
 
 /*
 |--------------------------------------------------------------------------
@@ -78,9 +77,9 @@ $app->configure('auth');
 //     App\Http\Middleware\ExampleMiddleware::class
 // ]);
 
-$app->routeMiddleware([
-    'auth' => App\Http\Middleware\Authenticate::class,
-]);
+// $app->routeMiddleware([
+//     'auth' => App\Http\Middleware\Authenticate::class,
+// ]);
 
 /*
 |--------------------------------------------------------------------------
@@ -94,9 +93,7 @@ $app->routeMiddleware([
 */
 
 // $app->register(App\Providers\AppServiceProvider::class);
-$app->register(App\Providers\AuthServiceProvider::class);
-$app->register(Illuminate\Auth\AuthServiceProvider::class);
-$app->register(PHPOpenSourceSaver\JWTAuth\Providers\LumenServiceProvider::class);
+// $app->register(App\Providers\AuthServiceProvider::class);
 // $app->register(App\Providers\EventServiceProvider::class);
 
 /*

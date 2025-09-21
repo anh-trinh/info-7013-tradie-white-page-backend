@@ -8,17 +8,19 @@ services:
   api-gateway:
     image: nginx:alpine
     container_name: api-gateway
+    restart: unless-stopped
     ports:
       - "8888:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # depends_on:
-    #   - account-service
-    #   - tradie-service
-    #   - booking-service
-    #   - review-service
+    depends_on:
+      - account-service
+      - tradie-service
+      - booking-service
+      - review-service
+      - notification-service
     networks:
       - tradie-network
 
@@ -57,6 +59,8 @@ services:
       MYSQL_ROOT_PASSWORD: root
     ports:
       - "3307:3306"
+    volumes:
+      - notification-db-data:/var/lib/mysql
     networks:
       - tradie-network
 
@@ -70,6 +74,8 @@ services:
       MYSQL_ROOT_PASSWORD: your_root_password
     ports:
       - "3308:3306"
+    volumes:
+      - booking-db-data:/var/lib/mysql
     networks:
       - tradie-network
 
@@ -157,3 +163,38 @@ services:
       - DB_PASSWORD=your_password
     networks:
       - tradie-network
+
+  tradie-db:
+    image: mysql:8.0
+    container_name: tradie-db
+    environment:
+      - MYSQL_DATABASE=tradie_db
+      - MYSQL_USER=your_user
+      - MYSQL_PASSWORD=your_password
+      - MYSQL_ROOT_PASSWORD=your_root_password
+    volumes:
+      - tradie-db-data:/var/lib/mysql
+    networks:
+      - tradie-network
+
+  tradie-service:
+    build: ./services/tradie-service
+    container_name: tradie-service
+    depends_on:
+      - tradie-db
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=tradie-db
+      - DB_PORT=3306
+      - DB_DATABASE=tradie_db
+      - DB_USERNAME=your_user
+      - DB_PASSWORD=your_password
+    networks:
+      - tradie-network
+
+volumes:
+  notification-db-data:
+  booking-db-data:
+  review-db-data:
+  account-db-data:
+  tradie-db-data:
