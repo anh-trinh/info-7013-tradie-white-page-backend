@@ -1,0 +1,84 @@
+server {
+    listen 80;
+    server_name _;
+
+    # Public DNS on Railway; harmless locally
+    resolver 1.1.1.1 8.8.8.8 valid=30s ipv6=off;
+    resolver_timeout 5s;
+
+    # These are rendered by envsubst at container start on Railway
+    set $account_upstream ${ACCOUNT_SERVICE_URL};
+    set $booking_upstream ${BOOKING_SERVICE_URL};
+    set $review_upstream  ${REVIEW_SERVICE_URL};
+    set $tradie_upstream  ${TRADIE_SERVICE_URL};
+
+    # Healthcheck
+    location = /healthz { return 200; }
+
+    # Authn: validate token via Account Service
+    location = /_auth_verify {
+        internal;
+        rewrite ^ /api/accounts/validate break;
+        proxy_pass $account_upstream;
+        proxy_pass_request_body off;
+        proxy_set_header Content-Length "";
+        proxy_set_header Authorization $http_authorization;
+    }
+
+    # Public endpoints (no token)
+    location = /api/accounts/login { proxy_pass $account_upstream; }
+    location = /api/accounts/register { proxy_pass $account_upstream; }
+    location ^~ /api/tradies { proxy_pass $tradie_upstream; }
+    location ^~ /api/services { proxy_pass $tradie_upstream; }
+    location ^~ /api/reviews/tradie { proxy_pass $review_upstream; }
+
+    # Protected APIs (require token)
+    location ^~ /api/ {
+        auth_request /_auth_verify;
+        auth_request_set $user_id   $upstream_http_x_user_id;
+        auth_request_set $user_role $upstream_http_x_user_role;
+
+        location ^~ /api/accounts {
+            proxy_pass $account_upstream;
+            proxy_set_header X-User-Id $user_id;
+            proxy_set_header X-User-Role $user_role;
+        }
+        location ^~ /api/bookings {
+            proxy_pass $booking_upstream;
+            proxy_set_header X-User-Id $user_id;
+            proxy_set_header X-User-Role $user_role;
+        }
+        location ^~ /api/reviews {
+            proxy_pass $review_upstream;
+            proxy_set_header X-User-Id $user_id;
+            proxy_set_header X-User-Role $user_role;
+        }
+
+        location ^~ /api/admin/ {
+            auth_request /_auth_verify;
+            auth_request_set $user_id   $upstream_http_x_user_id;
+            auth_request_set $user_role $upstream_http_x_user_role;
+
+            location ^~ /api/admin/accounts {
+                proxy_pass $account_upstream;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+            location ^~ /api/admin/categories {
+                proxy_pass $tradie_upstream;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+            location ^~ /api/admin/bookings {
+                proxy_pass $booking_upstream;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+            location ^~ /api/admin/reviews {
+                proxy_pass $review_upstream;
+                proxy_set_header X-User-Id $user_id;
+                proxy_set_header X-User-Role $user_role;
+            }
+        }
+    }
+}

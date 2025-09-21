@@ -3,9 +3,6 @@ FROM nginx:stable-alpine
 # Remove default site
 RUN rm -f /etc/nginx/conf.d/default.conf
 
-# Copy local docker site config as default
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Also provide Railway-friendly configs (optional)
-COPY templates/railway.nginx.conf /etc/nginx/nginx.conf
-COPY templates/site.conf /etc/nginx/conf.d/site.conf
+# Local (docker-compose) uses bind mount to provide nginx.conf at conf.d/default.conf
+# For Railway, use the official entrypoint's envsubst to render from a template
+COPY templates/default.conf.template /etc/nginx/templates/default.conf.template
