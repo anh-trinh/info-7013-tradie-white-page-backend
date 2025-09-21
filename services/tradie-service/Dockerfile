@@ -20,5 +20,5 @@ RUN composer update --no-dev --prefer-dist --no-interaction || true \
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-EXPOSE 8000
+EXPOSE 3000
 CMD ["sh", "/entrypoint.sh"]
