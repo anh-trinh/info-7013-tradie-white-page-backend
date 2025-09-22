@@ -5,12 +5,30 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use App\Services\RabbitMQService;
 
 class AccountController extends Controller
 {
+    /**
+     * Ensure JSON payloads are merged into the request input for Lumen validation
+     */
+    private function mergeJsonBody(Request $request): void
+    {
+        $contentType = $request->headers->get('Content-Type', '');
+        $raw = $request->getContent();
+        $looksJson = is_string($raw) && strlen($raw) > 0 && (str_starts_with(trim($raw), '{') || str_starts_with(trim($raw), '['));
+
+        if (stripos($contentType, 'application/json') !== false || $looksJson) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $request->merge($decoded);
+            }
+        }
+    }
     public function register(Request $request)
     {
+        $this->mergeJsonBody($request);
         $this->validate($request, [
             'first_name' => 'required|string',
             'last_name' => 'required|string',
@@ -35,12 +53,29 @@ class AccountController extends Controller
 
     public function login(Request $request)
     {
-        $this->validate($request, [
+        $this->mergeJsonBody($request);
+        // Extract credentials whether sent as form-data or raw JSON
+        $payload = $request->all();
+        if (empty($payload)) {
+            $decoded = json_decode($request->getContent() ?? '', true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $payload = $decoded;
+            }
+        }
+
+        $validator = Validator::make($payload, [
             'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
-        $credentials = $request->only(['email', 'password']);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $credentials = [
+            'email' => $payload['email'] ?? null,
+            'password' => $payload['password'] ?? null,
+        ];
 
         if (! $token = Auth::attempt($credentials)) {
             return response()->json(['message' => 'Unauthorized'], 401);

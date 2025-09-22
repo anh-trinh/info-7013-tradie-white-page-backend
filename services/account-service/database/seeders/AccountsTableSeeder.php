@@ -17,6 +17,20 @@ class AccountsTableSeeder extends Seeder
             User::factory()->count($target - $current)->create();
         }
 
+        // Ensure a resident test account exists for frontend login
+        DB::table('accounts')->updateOrInsert(
+            ['email' => 'anhtrinh@resident.com'],
+            [
+                'first_name' => 'Anh',
+                'last_name'  => 'Trinh',
+                'email'      => 'anhtrinh@resident.com',
+                'password'   => password_hash('secret', PASSWORD_BCRYPT),
+                'phone_number' => '0400009999',
+                'role'       => 'resident',
+                'status'     => 'active',
+            ]
+        );
+
         // Create 30 deterministic tradie accounts with fixed IDs 101..130 for cross-service linking
         $password = password_hash('Password123!', PASSWORD_BCRYPT);
         $services = ['Plumbing','Electrical','Carpentry','Painting','Landscaping','Roofing'];
