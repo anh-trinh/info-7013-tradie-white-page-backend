@@ -100,6 +100,17 @@ $app->register(Illuminate\Auth\AuthServiceProvider::class);
 $app->register(PHPOpenSourceSaver\JWTAuth\Providers\LumenServiceProvider::class);
 // $app->register(App\Providers\EventServiceProvider::class);
 
+// Enable Eloquent factory path for Lumen
+$app->singleton(
+    Illuminate\Database\Eloquent\Factories\Factory::class,
+    function ($app) {
+        return Illuminate\Database\Eloquent\Factories\Factory::construct(
+            Faker\Factory::create(),
+            database_path('factories')
+        );
+    }
+);
+
 /*
 |--------------------------------------------------------------------------
 | Load The Application Routes

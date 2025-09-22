@@ -30,6 +30,7 @@ fi
 # Run migrations if artisan exists
 if [ -f /var/www/html/artisan ]; then
   php artisan migrate --force || true
+  php artisan db:seed --force || true
 fi
 
 PORT="${PORT:-80}"
