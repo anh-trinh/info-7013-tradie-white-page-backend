@@ -10,6 +10,7 @@ class Quote extends Model
 
     public function messages()
     {
-        return $this->hasMany(QuoteMessage::class);
+        return $this->hasMany(QuoteMessage::class)
+            ->orderBy('created_at', 'asc');
     }
 }

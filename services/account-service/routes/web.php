@@ -17,8 +17,9 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->post('/accounts/register', 'AccountController@register');
     $router->post('/accounts/login', 'AccountController@login');
 
-    // Internal endpoint for service-to-service communication (no auth; internal network only)
+    // Internal endpoints for service-to-service communication (no auth; internal network only)
     $router->get('/internal/accounts/{id}', 'AccountController@getAccountByIdInternal');
+    $router->get('/internal/accounts', 'AccountController@getAccountsByIdsInternal');
 
     $router->group(['middleware' => 'auth'], function () use ($router) {
         $router->get('/accounts/me', 'AccountController@me');

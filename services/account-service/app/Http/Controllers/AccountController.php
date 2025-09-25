@@ -181,6 +181,24 @@ class AccountController extends Controller
         ]);
     }
 
+    public function getAccountsByIdsInternal(Request $request)
+    {
+        // Internal bulk endpoint: /api/internal/accounts?ids=1,2,3
+        $ids = collect(explode(',', (string)$request->query('ids', '')))
+            ->map(fn($v) => (int) trim($v))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return response()->json([]);
+        }
+
+        $users = User::whereIn('id', $ids)->get(['id','first_name','last_name','email','phone_number','role','status']);
+        return response()->json($users);
+    }
+
     public function updateAccountStatus($id, Request $request)
     {
         $this->validate($request, [

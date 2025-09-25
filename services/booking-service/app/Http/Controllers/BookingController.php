@@ -271,12 +271,9 @@ class BookingController extends Controller
                     // Build base URL from env (defaults to 8000 port as defined in docker-compose)
                     $base = rtrim(getenv('ACCOUNT_SERVICE_URL') ?: 'http://account-service:8000', '/');
                     $client = new Client(['base_uri' => $base]);
-                    $url = '/api/admin/accounts?ids=' . implode(',', $accountIds);
-                    $headers = [];
-                    if ($auth = $request->header('Authorization')) {
-                        $headers['Authorization'] = $auth;
-                    }
-                    $response = $client->request('GET', $url, [ 'headers' => $headers ]);
+                    // Use internal, non-authenticated bulk endpoint for service-to-service call
+                    $url = '/api/internal/accounts?ids=' . implode(',', $accountIds);
+                    $response = $client->request('GET', $url);
                     $accountsData = json_decode($response->getBody()->getContents(), true);
                     $accountsMap = collect($accountsData)->keyBy('id');
 
@@ -284,8 +281,14 @@ class BookingController extends Controller
                     $bookings->each(function ($booking) use ($accountsMap) {
                         $rid = $booking->quote->resident_account_id ?? null;
                         $tid = $booking->quote->tradie_account_id ?? null;
-                        $booking->setAttribute('resident_contact', $rid ? $accountsMap->get((int)$rid) : null);
-                        $booking->setAttribute('tradie_contact', $tid ? $accountsMap->get((int)$tid) : null);
+                        $resident = $rid ? $accountsMap->get((int)$rid) : null;
+                        $tradie = $tid ? $accountsMap->get((int)$tid) : null;
+                        $booking->setAttribute('resident_contact', $resident);
+                        $booking->setAttribute('tradie_contact', $tradie);
+                        // Convenience flat fields for FE consumption
+                        $booking->setAttribute('tradie_phone', $tradie['phone_number'] ?? null);
+                        $booking->setAttribute('tradie_first_name', $tradie['first_name'] ?? null);
+                        $booking->setAttribute('tradie_last_name', $tradie['last_name'] ?? null);
                     });
                 } catch (\Throwable $e) {
                     // Fail-soft: if aggregation fails, still return base bookings
