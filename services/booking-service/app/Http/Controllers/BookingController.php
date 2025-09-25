@@ -48,7 +48,7 @@ class BookingController extends Controller
                 $cache[$rid] = $accountClient->getAccountMinById($rid);
             }
             $res = $cache[$rid];
-            $q->resident_name = $res ? trim(($res['first_name'] ?? '') . ' ' . ($res['last_name'] ?? '')) : null;
+            $q->setAttribute('resident_name', $res ? trim(($res['first_name'] ?? '') . ' ' . ($res['last_name'] ?? '')) : null);
             return $q;
         });
         return response()->json($quotes);

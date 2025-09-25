@@ -61,7 +61,7 @@ class TradieSeeder extends Seeder
             'Roofing' => 100,
         ];
 
-        // Build 5 tradies per service (3 with 2000, 2 with 3000) using account IDs 101..130
+    // Build 6 tradies per service (3 with 2000, 3 with 3000) using account IDs 101..136
         $profiles = [];
         $accId = 100; // will increment to 101..130
 
@@ -88,7 +88,7 @@ class TradieSeeder extends Seeder
         foreach ($serviceDefs as $sIdx => $svc) {
             $service = $svc['name'];
             $catId = $categories[$service]->id;
-            for ($i = 0; $i < 5; $i++) {
+            for ($i = 0; $i < 6; $i++) {
                 $accId++;
                 $prefix = $brandPrefixes[($sIdx + $i) % count($brandPrefixes)];
                 $suffix = $brandSuffixes[$service][($sIdx + $i) % count($brandSuffixes[$service])];

@@ -68,14 +68,19 @@ class TradieController extends Controller
                     $t->average_rating = round($sum / $cnt, 1);
                 }
 
-                // Enrich missing contact info from Account Service (only if missing)
-                if ($t->account_id && (empty($t->email) || empty($t->phone_number))) {
+                // Always get latest contact info from Account Service for consistency
+                if ($t->account_id) {
                     try {
                         $accResp = $client->get('http://account-service:8000/api/internal/accounts/' . $t->account_id);
                         if ($accResp->getStatusCode() === 200) {
                             $acc = json_decode((string)$accResp->getBody(), true) ?: [];
-                            if (empty($t->email) && !empty($acc['email'] ?? null)) { $t->email = $acc['email']; }
-                            if (empty($t->phone_number) && !empty($acc['phone_number'] ?? null)) { $t->phone_number = $acc['phone_number']; }
+                            // Always use account service data as source of truth for contact info
+                            if (!empty($acc['email'] ?? null)) {
+                                $t->setAttribute('email', $acc['email']);
+                            }
+                            if (!empty($acc['phone_number'] ?? null)) {
+                                $t->setAttribute('phone_number', $acc['phone_number']);
+                            }
                         }
                     } catch (\Throwable $e2) {
                         // ignore enrichment failures
@@ -193,26 +198,34 @@ class TradieController extends Controller
             }
         }
 
-        // Enrich missing contact info (email/phone_number) from Account Service if available
+        // Always get latest contact info (email/phone_number) from Account Service for consistency
+        $accountEmail = null;
+        $accountPhone = null;
         try {
-            if ($tradieProfile->account_id && (empty($tradieProfile->email) || empty($tradieProfile->phone_number))) {
+            if ($tradieProfile->account_id) {
                 $client = new Client([ 'timeout' => 2.5, 'connect_timeout' => 1.0 ]);
                 $resp = $client->get('http://account-service:8000/api/internal/accounts/' . $tradieProfile->account_id);
                 if ($resp->getStatusCode() === 200) {
                     $acc = json_decode((string)$resp->getBody(), true) ?: [];
-                    if (empty($tradieProfile->email) && !empty($acc['email'] ?? null)) {
-                        $tradieProfile->email = $acc['email'];
-                    }
-                    if (empty($tradieProfile->phone_number) && !empty($acc['phone_number'] ?? null)) {
-                        $tradieProfile->phone_number = $acc['phone_number'];
-                    }
+                    // Use account service data as source of truth for contact info
+                    $accountEmail = $acc['email'] ?? null;
+                    $accountPhone = $acc['phone_number'] ?? null;
                 }
             }
         } catch (\Throwable $e) {
-            // If account-service is not reachable, just return what we have
+            // If account-service is not reachable, use tradie profile data
         }
 
-        // Return the complete profile including contact information
-        return response()->json($tradieProfile);
+        // Convert to array and override with account service data
+        $response = $tradieProfile->toArray();
+        if ($accountEmail) {
+            $response['email'] = $accountEmail;
+        }
+        if ($accountPhone) {
+            $response['phone_number'] = $accountPhone;
+        }
+
+        // Return the complete profile with account service contact information
+        return response()->json($response);
     }
 }
