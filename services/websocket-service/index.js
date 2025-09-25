@@ -1,10 +1,13 @@
 const { Server } = require('socket.io');
 const amqp = require('amqplib/callback_api');
 
-// Khởi tạo server Socket.IO trên port 4000
-const io = new Server(4000, {
-  cors: { origin: '*' }
+// Khởi tạo server Socket.IO trên port 4000, đồng bộ path '/ws/' với NGINX và frontend
+const IO_PORT = 4000;
+const io = new Server(IO_PORT, {
+  cors: { origin: '*' },
+  path: '/ws/'
 });
+console.log(`[Socket.IO] Listening on port ${IO_PORT} with path /ws/`);
 
 const connectedUsers = {}; // { userId: socketId }
 const ACCOUNT_SERVICE_URL = process.env.ACCOUNT_SERVICE_URL || 'http://account-service:8000';
@@ -58,21 +61,40 @@ io.on('connection', async (socket) => {
   });
 });
 
-// Listen to Message Broker
+// Listen to Message Broker (resilient retry)
 const RABBIT_URL = process.env.RABBITMQ_URL || 'amqp://guest:guest@message-broker:5672';
-amqp.connect(RABBIT_URL, function(err, conn) {
-  if (err) { throw err; }
-  conn.createChannel(function(err, ch) {
-    if (err) { throw err; }
-    const queue = 'realtime_updates_queue';
-    ch.assertQueue(queue, { durable: true });
-    console.log(`[AMQP] Waiting for messages in ${queue}.`);
-    ch.consume(queue, function(msg) {
-      try {
-        const payload = JSON.parse(msg.content.toString());
-        const eventType = payload.pattern || payload.event_type || 'unknown';
-        const eventData = payload.data || {};
-        console.log(`[AMQP] Received event: ${eventType}`);
+let amqpConn = null;
+function startAmqpConsumer() {
+  amqp.connect(RABBIT_URL, function(err, conn) {
+    if (err) {
+      console.error(`[AMQP] Connection failed: ${err.message}. Retrying in 5s...`);
+      setTimeout(startAmqpConsumer, 5000);
+      return;
+    }
+    amqpConn = conn;
+    conn.on('error', (e) => {
+      console.error('[AMQP] Connection error:', e.message);
+    });
+    conn.on('close', () => {
+      console.warn('[AMQP] Connection closed. Reconnecting in 5s...');
+      setTimeout(startAmqpConsumer, 5000);
+    });
+
+    conn.createChannel(function(err, ch) {
+      if (err) {
+        console.error('[AMQP] Channel error:', err.message);
+        try { conn.close(); } catch(_) {}
+        return;
+      }
+      const queue = 'realtime_updates_queue';
+      ch.assertQueue(queue, { durable: true });
+      console.log(`[AMQP] Waiting for messages in ${queue}.`);
+      ch.consume(queue, function(msg) {
+        try {
+          const payload = JSON.parse(msg.content.toString());
+          const eventType = payload.pattern || payload.event_type || 'unknown';
+          const eventData = payload.data || {};
+          console.log(`[AMQP] Received event: ${eventType}`);
 
         if (eventType === 'new_quote_message') {
           const quote = (eventData && eventData.quote) || {};
@@ -129,9 +151,12 @@ amqp.connect(RABBIT_URL, function(err, conn) {
           }
           return;
         }
-      } catch (e) {
-        console.error('Error handling message', e);
-      }
-    }, { noAck: true });
+        } catch (e) {
+          console.error('Error handling message', e);
+        }
+      }, { noAck: true });
+    });
   });
-});
+}
+
+startAmqpConsumer();
