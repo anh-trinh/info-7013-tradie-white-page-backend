@@ -94,15 +94,16 @@ class AccountController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $credentials = [
-            'email' => $payload['email'] ?? null,
-            'password' => $payload['password'] ?? null,
-        ];
-
-        if (! $token = Auth::attempt($credentials)) {
+        // Manual auth to enforce status check (prevent suspended accounts from logging in)
+        $user = User::where('email', $payload['email'])->first();
+        if (!$user || !Hash::check($payload['password'], $user->password)) {
             return response()->json(['message' => 'Unauthorized'], 401);
         }
+        if (($user->status ?? 'active') !== 'active') {
+            return response()->json(['message' => 'Account suspended'], 403);
+        }
 
+        $token = Auth::login($user);
         return $this->respondWithToken($token);
     }
 

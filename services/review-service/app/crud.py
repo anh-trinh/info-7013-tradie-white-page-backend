@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import models, schemas
 import rabbitmq_client
 
@@ -46,3 +47,43 @@ def delete_review_by_id(db: Session, review_id: int):
         db.delete(db_review)
         db.commit()
     return db_review
+
+
+def get_review_by_booking_id(db: Session, booking_id: int):
+    return db.query(models.Review).filter(models.Review.booking_id == booking_id).first()
+
+
+def get_reviewed_booking_ids(db: Session, booking_ids: list[int]):
+    if not booking_ids:
+        return set()
+    rows = (
+        db.query(models.Review.booking_id)
+        .filter(models.Review.booking_id.in_(booking_ids))
+        .all()
+    )
+    return {r[0] for r in rows}
+
+
+def get_reviews_summary_by_tradie_ids(db: Session, tradie_ids: list[int]):
+    if not tradie_ids:
+        return []
+    rows = (
+        db.query(
+            models.Review.tradie_account_id.label('tradie_account_id'),
+            func.count(models.Review.id).label('reviews_count'),
+            func.avg(models.Review.rating).label('average_rating'),
+        )
+        .filter(models.Review.tradie_account_id.in_(tradie_ids))
+        .group_by(models.Review.tradie_account_id)
+        .all()
+    )
+    # Convert to plain dicts with rounded average
+    result = []
+    for r in rows:
+        avg = float(r.average_rating) if r.average_rating is not None else 0.0
+        result.append({
+            'tradie_account_id': int(r.tradie_account_id),
+            'reviews_count': int(r.reviews_count or 0),
+            'average_rating': round(avg, 1),
+        })
+    return result

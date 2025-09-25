@@ -28,9 +28,12 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         // Internal endpoint for API Gateway to validate token and extract user context
         $router->get('/accounts/validate', function () {
             $user = \Illuminate\Support\Facades\Auth::user();
+            if (!$user || ($user->status ?? 'active') !== 'active') {
+                return response('Forbidden', 403);
+            }
             return response('Token is valid.', 200)
-                ->header('X-User-Id', $user ? $user->id : '')
-                ->header('X-User-Role', $user ? ($user->role ?? '') : '');
+                ->header('X-User-Id', $user->id)
+                ->header('X-User-Role', $user->role ?? '');
         });
 
         $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {

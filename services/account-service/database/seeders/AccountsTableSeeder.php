@@ -17,6 +17,23 @@ class AccountsTableSeeder extends Seeder
             User::factory()->count($target - $current)->create();
         }
 
+        // Ensure an admin account exists for administrative access
+        // Create or update admin with proper bcrypt hash
+        $adminHash = password_hash('admin', PASSWORD_BCRYPT);
+        DB::table('accounts')->updateOrInsert(
+            ['email' => 'admin@admin.com'],
+            [
+                'first_name'   => 'Admin',
+                'last_name'    => 'User',
+                'email'        => 'admin@admin.com',
+                'password'     => $adminHash,
+                'phone_number' => null,
+                'role'         => 'admin',
+                'status'       => 'active',
+                'updated_at'   => now(),
+            ]
+        );
+
         // Ensure a resident test account exists for frontend login
         DB::table('accounts')->updateOrInsert(
             ['email' => 'anhtrinh@resident.com'],

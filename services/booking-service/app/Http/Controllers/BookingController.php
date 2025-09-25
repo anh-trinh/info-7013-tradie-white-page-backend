@@ -257,6 +257,27 @@ class BookingController extends Controller
 
         $bookings = $query->latest('scheduled_at')->get();
 
+        // Mark whether each booking already has a review, by querying Review Service in bulk
+        if ($bookings->isNotEmpty()) {
+            // Default: ensure field exists
+            $bookings->each(function ($b) { $b->setAttribute('has_review', false); });
+            $bookingIds = $bookings->pluck('id')->values()->all();
+            try {
+                $reviewBase = rtrim(getenv('REVIEW_SERVICE_URL') ?: 'http://review-service:8000', '/');
+                // FastAPI expects repeated keys like booking_ids=1&booking_ids=2 (no brackets)
+                $queryStr = implode('&', array_map(fn($id) => 'booking_ids=' . urlencode($id), $bookingIds));
+                $url = $reviewBase . '/api/internal/reviews/status?' . rtrim($queryStr, '&');
+                $client = new Client();
+                $resp = $client->request('GET', $url);
+                $reviewedIds = collect(json_decode($resp->getBody()->getContents(), true));
+                $bookings->each(function ($b) use ($reviewedIds) {
+                    $b->setAttribute('has_review', $reviewedIds->contains($b->id));
+                });
+            } catch (\Throwable $e) {
+                // fail-soft, do not block response
+            }
+        }
+
         // Aggregate contact info from Account Service in a single request
         if ($bookings->isNotEmpty()) {
             $accountIds = $bookings->pluck('quote.resident_account_id')
@@ -320,7 +341,47 @@ class BookingController extends Controller
 
     public function getAllJobsForAdmin()
     {
-        return response()->json(Booking::with('quote')->latest()->get());
+        $bookings = Booking::with('quote')->latest()->get();
+
+        // Aggregate contact info from Account Service in a single request
+        if ($bookings->isNotEmpty()) {
+            $accountIds = $bookings->pluck('quote.resident_account_id')
+                ->merge($bookings->pluck('quote.tradie_account_id'))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (!empty($accountIds)) {
+                try {
+                    $base = rtrim(getenv('ACCOUNT_SERVICE_URL') ?: 'http://account-service:8000', '/');
+                    $client = new Client(['base_uri' => $base]);
+                    $url = '/api/internal/accounts?ids=' . implode(',', $accountIds);
+                    $response = $client->request('GET', $url);
+                    $accountsData = json_decode($response->getBody()->getContents(), true);
+                    $accountsMap = collect($accountsData)->keyBy('id');
+
+                    $bookings->each(function ($booking) use ($accountsMap) {
+                        $rid = $booking->quote->resident_account_id ?? null;
+                        $tid = $booking->quote->tradie_account_id ?? null;
+                        $resident = $rid ? $accountsMap->get((int)$rid) : null;
+                        $tradie = $tid ? $accountsMap->get((int)$tid) : null;
+                        $booking->setAttribute('resident_contact', $resident);
+                        $booking->setAttribute('tradie_contact', $tradie);
+                        // Convenience flat fields
+                        $booking->setAttribute('resident_email', $resident['email'] ?? null);
+                        $booking->setAttribute('tradie_email', $tradie['email'] ?? null);
+                        $booking->setAttribute('tradie_phone', $tradie['phone_number'] ?? null);
+                        $booking->setAttribute('tradie_first_name', $tradie['first_name'] ?? null);
+                        $booking->setAttribute('tradie_last_name', $tradie['last_name'] ?? null);
+                    });
+                } catch (\Throwable $e) {
+                    // Fail-soft: still return base bookings if aggregation fails
+                }
+            }
+        }
+
+        return response()->json($bookings);
     }
 
     public function getJobDetailsForAdmin($id)

@@ -33,61 +33,59 @@ class TradieController extends Controller
                 $q->where('name', 'like', '%'.$request->input('service').'%');
             });
         }
-    $tradies = $query->with('categories')->get();
+        $tradies = $query->with('categories')->get();
 
-        // Enrich ratings from review-service for immediate correctness.
-        // Aggregate from account_id and fallback to primary id for compatibility with seeded review IDs.
-        $client = new Client([ 'timeout' => 2.5, 'connect_timeout' => 1.0 ]);
-        foreach ($tradies as $t) {
-            try {
-                $sum = 0; $cnt = 0;
-                // 1) By account_id
-                if ($t->account_id) {
-                    $resp = $client->get('http://review-service:8000/api/reviews/tradie/' . $t->account_id);
+        // Performance: bulk enrichment instead of per-item HTTP calls
+        if ($tradies->isNotEmpty()) {
+            $client = new Client([ 'timeout' => 3.0, 'connect_timeout' => 1.0 ]);
+
+            // 1) Bulk ratings summary from Review Service by account IDs
+            $accountIds = $tradies->pluck('account_id')->filter()->unique()->values()->all();
+            if (!empty($accountIds)) {
+                try {
+                    $qs = implode('&', array_map(fn($id) => 'tradie_ids=' . urlencode($id), $accountIds));
+                    $url = 'http://review-service:8000/api/internal/reviews/summary?' . $qs;
+                    $resp = $client->get($url);
                     if ($resp->getStatusCode() === 200) {
-                        $body = (string) $resp->getBody();
-                        $data = json_decode($body, true) ?: [];
-                        if (is_array($data)) {
-                            foreach ($data as $r) { if (isset($r['rating'])) { $sum += (int)$r['rating']; $cnt++; } }
-                        }
+                        $arr = json_decode((string)$resp->getBody(), true) ?: [];
+                        $ratingsMap = collect($arr)->keyBy('tradie_account_id');
+                        $tradies->each(function ($t) use ($ratingsMap) {
+                            $aid = (int)($t->account_id ?? 0);
+                            if ($aid && $ratingsMap->has($aid)) {
+                                $row = $ratingsMap->get($aid);
+                                $t->reviews_count = (int)($row['reviews_count'] ?? 0);
+                                $t->average_rating = (float)($row['average_rating'] ?? 0);
+                            }
+                        });
                     }
+                } catch (\Throwable $e) {
+                    // fail-soft
                 }
-                // 2) Fallback by primary id (helps when reviews are seeded against small IDs)
-                if ($cnt === 0) {
-                    $resp2 = $client->get('http://review-service:8000/api/reviews/tradie/' . $t->id);
-                    if ($resp2->getStatusCode() === 200) {
-                        $body2 = (string) $resp2->getBody();
-                        $data2 = json_decode($body2, true) ?: [];
-                        if (is_array($data2)) {
-                            foreach ($data2 as $r) { if (isset($r['rating'])) { $sum += (int)$r['rating']; $cnt++; } }
-                        }
-                    }
-                }
-                if ($cnt > 0) {
-                    $t->reviews_count = $cnt;
-                    $t->average_rating = round($sum / $cnt, 1);
-                }
+            }
 
-                // Always get latest contact info from Account Service for consistency
-                if ($t->account_id) {
-                    try {
-                        $accResp = $client->get('http://account-service:8000/api/internal/accounts/' . $t->account_id);
-                        if ($accResp->getStatusCode() === 200) {
-                            $acc = json_decode((string)$accResp->getBody(), true) ?: [];
-                            // Always use account service data as source of truth for contact info
-                            if (!empty($acc['email'] ?? null)) {
-                                $t->setAttribute('email', $acc['email']);
+            // 2) Bulk contact enrichment from Account Service
+            if (!empty($accountIds)) {
+                try {
+                    $url = 'http://account-service:8000/api/internal/accounts?ids=' . implode(',', $accountIds);
+                    $aresp = $client->get($url);
+                    if ($aresp->getStatusCode() === 200) {
+                        $accs = collect(json_decode((string)$aresp->getBody(), true) ?: [])->keyBy('id');
+                        $tradies->each(function ($t) use ($accs) {
+                            $aid = (int)($t->account_id ?? 0);
+                            if ($aid && $accs->has($aid)) {
+                                $a = $accs->get($aid);
+                                if (!empty($a['email'] ?? null)) {
+                                    $t->setAttribute('email', $a['email']);
+                                }
+                                if (!empty($a['phone_number'] ?? null)) {
+                                    $t->setAttribute('phone_number', $a['phone_number']);
+                                }
                             }
-                            if (!empty($acc['phone_number'] ?? null)) {
-                                $t->setAttribute('phone_number', $acc['phone_number']);
-                            }
-                        }
-                    } catch (\Throwable $e2) {
-                        // ignore enrichment failures
+                        });
                     }
+                } catch (\Throwable $e) {
+                    // fail-soft
                 }
-            } catch (\Throwable $e) {
-                // Ignore and keep defaults
             }
         }
 
@@ -162,41 +160,7 @@ class TradieController extends Controller
             $tradieProfile = TradieProfile::with('categories')->findOrFail($id);
         }
 
-        // If ratings are not yet populated (e.g., worker not processed), compute on the fly from review-service
-        if ((int)($tradieProfile->reviews_count ?? 0) === 0) {
-            try {
-                $client = new Client([ 'timeout' => 3, 'connect_timeout' => 1.5 ]);
-                // account_id is the identifier used by review-service as tradie_account_id
-                $accountId = $tradieProfile->account_id;
-                $sum = 0; $cnt = 0;
-                if ($accountId) {
-                    $resp = $client->get('http://review-service:8000/api/reviews/tradie/' . $accountId);
-                    if ($resp->getStatusCode() === 200) {
-                        $data = json_decode($resp->getBody()->getContents(), true) ?: [];
-                        if (is_array($data)) {
-                            foreach ($data as $r) { if (isset($r['rating'])) { $sum += (int)$r['rating']; $cnt++; } }
-                        }
-                    }
-                }
-                // Fallback to primary id if nothing found by account
-                if ($cnt === 0) {
-                    $resp2 = $client->get('http://review-service:8000/api/reviews/tradie/' . $tradieProfile->id);
-                    if ($resp2->getStatusCode() === 200) {
-                        $data2 = json_decode($resp2->getBody()->getContents(), true) ?: [];
-                        if (is_array($data2)) {
-                            foreach ($data2 as $r) { if (isset($r['rating'])) { $sum += (int)$r['rating']; $cnt++; } }
-                        }
-                    }
-                }
-                if ($cnt > 0) {
-                    $tradieProfile->reviews_count = $cnt;
-                    $tradieProfile->average_rating = round($sum / $cnt, 1);
-                }
-            } catch (\Throwable $e) {
-                // Ignore network errors and continue returning stored values
-                // Log::warning('Rating enrichment failed: '.$e->getMessage());
-            }
-        }
+        // Keep ratings as stored (avoid circular calls to review-service here)
 
         // Always get latest contact info (email/phone_number) from Account Service for consistency
         $accountEmail = null;

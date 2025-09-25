@@ -13,6 +13,15 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         $router->put('/tradies/profile', 'TradieController@updateProfile');
     });
 
+    // Internal lightweight lookup for cross-service usage (no enrichment, no auth)
+    $router->get('/internal/tradies/{id}', function ($id) {
+        $profile = \App\Models\TradieProfile::select(['id','account_id'])->where('account_id', $id)->first();
+        if (!$profile) {
+            $profile = \App\Models\TradieProfile::select(['id','account_id'])->findOrFail($id);
+        }
+        return response()->json(['id' => (int)$profile->id, 'account_id' => (int)$profile->account_id]);
+    });
+
     $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
         $router->get('/categories', 'CategoryController@getAll');
         $router->post('/categories', 'CategoryController@create');
