@@ -179,6 +179,25 @@ class TradieController extends Controller
             }
         }
 
+        // Enrich missing contact info (email/phone_number) from Account Service if available
+        try {
+            if ($tradieProfile->account_id && (empty($tradieProfile->email) || empty($tradieProfile->phone_number))) {
+                $client = new Client([ 'timeout' => 2.5, 'connect_timeout' => 1.0 ]);
+                $resp = $client->get('http://account-service:8000/api/internal/accounts/' . $tradieProfile->account_id);
+                if ($resp->getStatusCode() === 200) {
+                    $acc = json_decode((string)$resp->getBody(), true) ?: [];
+                    if (empty($tradieProfile->email) && !empty($acc['email'] ?? null)) {
+                        $tradieProfile->email = $acc['email'];
+                    }
+                    if (empty($tradieProfile->phone_number) && !empty($acc['phone_number'] ?? null)) {
+                        $tradieProfile->phone_number = $acc['phone_number'];
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // If account-service is not reachable, just return what we have
+        }
+
         // Return the complete profile including contact information
         return response()->json($tradieProfile);
     }
