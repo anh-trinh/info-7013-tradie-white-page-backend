@@ -8,12 +8,22 @@ def create_review(db: Session, review: schemas.ReviewCreate):
     db.add(db_review)
     db.commit()
     db.refresh(db_review)
+    # Notify Notification Service (email/logging etc.)
     rabbitmq_client.publish('notifications_queue', {
         'pattern': 'review_submitted',
         'data': {
             'review_id': db_review.id,
+            'tradie_account_id': db_review.tradie_account_id,
             'rating': db_review.rating,
+            'booking_id': db_review.booking_id,
+            'resident_account_id': db_review.resident_account_id,
         }
+    })
+
+    # Notify Tradie Service worker (to update average_rating, reviews_count)
+    rabbitmq_client.publish('rating_update_queue', {
+        'tradie_account_id': db_review.tradie_account_id,
+        'rating': db_review.rating,
     })
     return db_review
 

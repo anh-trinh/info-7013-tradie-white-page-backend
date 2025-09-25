@@ -21,6 +21,9 @@ $router->group(['prefix' => 'api'], function () use ($router) {
         $router->get('/accounts/me', 'AccountController@me');
         $router->put('/accounts/me', 'AccountController@updateProfile');
 
+        // Internal endpoint for service-to-service communication
+        $router->get('/internal/accounts/{id}', 'AccountController@getAccountByIdInternal');
+
         // Internal endpoint for API Gateway to validate token and extract user context
         $router->get('/accounts/validate', function () {
             $user = \Illuminate\Support\Facades\Auth::user();

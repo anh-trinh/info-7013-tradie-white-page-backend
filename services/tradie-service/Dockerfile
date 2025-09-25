@@ -11,12 +11,15 @@ RUN apk add --no-cache curl git unzip \
  && php composer-setup.php --install-dir=/usr/bin --filename=composer \
  && rm composer-setup.php
 
-# Copy application source (including vendor if present)
+# Copy composer files first to leverage Docker layer caching
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-interaction --no-progress || (cat /root/.composer/logs/* || true)
+
+# Then copy the rest of the application source
 COPY . .
 
 # Install PHP dependencies at build time (best-effort)
-RUN composer update --no-dev --prefer-dist --no-interaction || true \
- && composer dump-autoload -o || true
+RUN composer dump-autoload -o || true
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

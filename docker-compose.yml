@@ -192,6 +192,32 @@ services:
       - DB_DATABASE=tradie_db
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - RABBITMQ_HOST=message-broker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
+    networks:
+      - tradie-network
+
+  tradie-worker:
+    build: ./services/tradie-service
+    container_name: tradie-worker
+    restart: unless-stopped
+    command: php artisan ratings:listen
+    depends_on:
+      - tradie-db
+      - message-broker
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=tradie-db
+      - DB_PORT=3306
+      - DB_DATABASE=tradie_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - RABBITMQ_HOST=message-broker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
     networks:
       - tradie-network
 

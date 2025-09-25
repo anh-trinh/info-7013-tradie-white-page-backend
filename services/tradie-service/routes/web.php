@@ -4,7 +4,7 @@
 
 $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('/tradies', 'TradieController@search');
-    $router->get('/tradies/{id}', 'TradieController@getById');
+    $router->get('/tradies/{id:[0-9]+}', 'TradieController@getById');
     $router->get('/services', 'CategoryController@getAll');
 
     // Protected routes requiring a valid user context from API Gateway
