@@ -113,6 +113,26 @@ class AccountController extends Controller
 
     public function updateProfile(Request $request)
     {
+        // Ensure JSON body is merged for validation and input access
+        $this->mergeJsonBody($request);
+
+        // Normalize possible phone field aliases from clients (e.g., phone, phoneNumber)
+        $payload = $request->all();
+        if (!isset($payload['phone_number'])) {
+            if (isset($payload['phoneNumber']) && !empty($payload['phoneNumber'])) {
+                $request->merge(['phone_number' => $payload['phoneNumber']]);
+            } elseif (isset($payload['phone']) && !empty($payload['phone'])) {
+                $request->merge(['phone_number' => $payload['phone']]);
+            }
+        }
+
+        // Optional validation for updatable fields
+        $this->validate($request, [
+            'first_name' => 'sometimes|string',
+            'last_name' => 'sometimes|string',
+            'phone_number' => 'nullable|string',
+        ]);
+
         $user = Auth::user();
         $user->fill($request->only(['first_name','last_name','phone_number']));
         $user->save();
