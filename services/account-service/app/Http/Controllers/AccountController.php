@@ -142,6 +142,18 @@ class AccountController extends Controller
     public function getAllAccounts(Request $request)
     {
         $query = User::query();
+        // Support filtering by a comma-separated list of IDs: ?ids=1,2,3
+        if ($request->filled('ids')) {
+            $ids = collect(explode(',', (string)$request->input('ids')))
+                ->map(fn($v) => (int)trim($v))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            if (!empty($ids)) {
+                $query->whereIn('id', $ids);
+            }
+        }
         if ($request->has('role')) {
             $query->where('role', $request->input('role'));
         }

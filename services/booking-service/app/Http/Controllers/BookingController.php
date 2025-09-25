@@ -7,6 +7,7 @@ use App\Models\QuoteMessage;
 use App\Services\RabbitMQService;
 use App\Services\AccountClient;
 use Carbon\Carbon;
+use GuzzleHttp\Client;
 
 class BookingController extends Controller
 {
@@ -28,6 +29,17 @@ class BookingController extends Controller
             'service_postcode' => $request->input('service_postcode') ?? null,
             'status' => 'pending'
         ]);
+
+        // Publish real-time event for new quote request (notify tradie)
+        try {
+            (new RabbitMQService())->publishEvent(
+                'new_quote_request',
+                ['quote' => $quote],
+                'realtime_updates_queue'
+            );
+        } catch (\Throwable $e) {
+            // fail-soft
+        }
 
         return response()->json($quote, 201);
     }
@@ -88,11 +100,29 @@ class BookingController extends Controller
         return response()->json(['quote'=>$quote,'message'=>$msg],200);
     }
 
-    public function acceptQuote($id)
+    public function acceptQuote($id, Request $request)
     {
         $quote = Quote::findOrFail($id);
+        $userId = (int) $request->header('X-User-Id', 0);
+        // Only resident can accept the quote
+        if ($userId !== (int)$quote->resident_account_id) {
+            return response()->json(['message' => 'Forbidden'], 403);
+        }
+
         $quote->status = 'accepted';
         $quote->save();
+
+        // Publish realtime event for acceptance
+        try {
+            (new RabbitMQService())->publishEvent(
+                'quote_accepted',
+                ['quote' => $quote],
+                'realtime_updates_queue'
+            );
+        } catch (\Throwable $e) {
+            // fail-soft
+        }
+
         return response()->json($quote);
     }
 
@@ -135,7 +165,7 @@ class BookingController extends Controller
         if ($request->has('offered_price')) {
             $message->offered_price = $request->input('offered_price');
         }
-        $message->save();
+    $message->save();
 
         // Update status: if price included, treat as counter-offer; else responded
         if ($request->filled('offered_price')) {
@@ -144,6 +174,20 @@ class BookingController extends Controller
             $quote->status = 'responded';
         }
         $quote->save();
+
+        // Reload quote with messages for realtime broadcast
+        $updatedQuote = Quote::with(['messages' => function($q){ $q->orderBy('created_at','asc'); }])->find($id);
+
+        // Publish real-time update event
+        try {
+            (new RabbitMQService())->publishEvent(
+                'new_quote_message',
+                ['quote' => $updatedQuote],
+                'realtime_updates_queue'
+            );
+        } catch (\Throwable $e) {
+            // fail-soft; don't block API
+        }
 
         return response()->json($message, 201);
     }
@@ -181,9 +225,20 @@ class BookingController extends Controller
             'status' => 'scheduled'
         ]);
 
-        (new RabbitMQService())->publishEvent('booking_created', [
-            'booking_id' => $booking->id,
-        ]);
+        // Legacy/notification event (kept): booking_created to notifications_queue
+        (new RabbitMQService())->publishEvent('booking_created', [ 'booking_id' => $booking->id ]);
+
+        // Realtime event with full context for both parties
+        try {
+            $bookingFull = Booking::with('quote')->find($booking->id);
+            (new RabbitMQService())->publishEvent(
+                'booking_created',
+                ['booking' => $bookingFull],
+                'realtime_updates_queue'
+            );
+        } catch (\Throwable $e) {
+            // fail-soft
+        }
         return response()->json($booking, 201);
     }
 
@@ -199,7 +254,46 @@ class BookingController extends Controller
         } else {
             $query->whereHas('quote', function($q) use ($userId) { $q->where('resident_account_id', $userId); });
         }
-        return response()->json($query->latest('scheduled_at')->get());
+
+        $bookings = $query->latest('scheduled_at')->get();
+
+        // Aggregate contact info from Account Service in a single request
+        if ($bookings->isNotEmpty()) {
+            $accountIds = $bookings->pluck('quote.resident_account_id')
+                ->merge($bookings->pluck('quote.tradie_account_id'))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+
+            if (!empty($accountIds)) {
+                try {
+                    // Build base URL from env (defaults to 8000 port as defined in docker-compose)
+                    $base = rtrim(getenv('ACCOUNT_SERVICE_URL') ?: 'http://account-service:8000', '/');
+                    $client = new Client(['base_uri' => $base]);
+                    $url = '/api/admin/accounts?ids=' . implode(',', $accountIds);
+                    $headers = [];
+                    if ($auth = $request->header('Authorization')) {
+                        $headers['Authorization'] = $auth;
+                    }
+                    $response = $client->request('GET', $url, [ 'headers' => $headers ]);
+                    $accountsData = json_decode($response->getBody()->getContents(), true);
+                    $accountsMap = collect($accountsData)->keyBy('id');
+
+                    // Attach contacts to each booking (as attributes so they're serialized)
+                    $bookings->each(function ($booking) use ($accountsMap) {
+                        $rid = $booking->quote->resident_account_id ?? null;
+                        $tid = $booking->quote->tradie_account_id ?? null;
+                        $booking->setAttribute('resident_contact', $rid ? $accountsMap->get((int)$rid) : null);
+                        $booking->setAttribute('tradie_contact', $tid ? $accountsMap->get((int)$tid) : null);
+                    });
+                } catch (\Throwable $e) {
+                    // Fail-soft: if aggregation fails, still return base bookings
+                }
+            }
+        }
+
+        return response()->json($bookings);
     }
 
     public function updateJobStatus($id, Request $request)

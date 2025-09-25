@@ -1,0 +1,11 @@
+{
+  "name": "websocket-service",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "amqplib": "^0.10.4",
+    "socket.io": "^4.7.5"
+  }
+}

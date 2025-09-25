@@ -33,6 +33,18 @@ services:
     networks:
       - tradie-network
 
+  websocket-service:
+    build: ./services/websocket-service
+    container_name: websocket-service
+    depends_on:
+      - message-broker
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+    ports:
+      - "4000:4000"
+    networks:
+      - tradie-network
+
   notification-service:
     build: ./services/notification-service
     container_name: notification-service
