@@ -41,8 +41,13 @@ class BookingController extends Controller
             ->get();
         // Enrich with resident name
         $accountClient = new AccountClient();
-        $quotes = $quotes->map(function($q) use ($accountClient) {
-            $res = $accountClient->getAccountMinById((int)$q->resident_account_id);
+        $cache = [];
+        $quotes = $quotes->map(function($q) use ($accountClient, &$cache) {
+            $rid = (int)$q->resident_account_id;
+            if (!array_key_exists($rid, $cache)) {
+                $cache[$rid] = $accountClient->getAccountMinById($rid);
+            }
+            $res = $cache[$rid];
             $q->resident_name = $res ? trim(($res['first_name'] ?? '') . ' ' . ($res['last_name'] ?? '')) : null;
             return $q;
         });
