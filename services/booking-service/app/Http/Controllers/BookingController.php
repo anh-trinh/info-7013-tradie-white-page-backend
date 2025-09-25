@@ -5,6 +5,7 @@ use App\Models\Quote;
 use App\Models\Booking;
 use App\Models\QuoteMessage;
 use App\Services\RabbitMQService;
+use App\Services\AccountClient;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -38,6 +39,13 @@ class BookingController extends Controller
             ->orWhere('tradie_account_id',$userId)
             ->with('messages')
             ->get();
+        // Enrich with resident name
+        $accountClient = new AccountClient();
+        $quotes = $quotes->map(function($q) use ($accountClient) {
+            $res = $accountClient->getAccountMinById((int)$q->resident_account_id);
+            $q->resident_name = $res ? trim(($res['first_name'] ?? '') . ' ' . ($res['last_name'] ?? '')) : null;
+            return $q;
+        });
         return response()->json($quotes);
     }
 
