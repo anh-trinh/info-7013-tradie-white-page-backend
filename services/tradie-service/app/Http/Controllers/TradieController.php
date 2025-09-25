@@ -33,7 +33,7 @@ class TradieController extends Controller
                 $q->where('name', 'like', '%'.$request->input('service').'%');
             });
         }
-        $tradies = $query->with('categories')->get();
+    $tradies = $query->with('categories')->get();
 
         // Enrich ratings from review-service for immediate correctness.
         // Aggregate from account_id and fallback to primary id for compatibility with seeded review IDs.
@@ -66,6 +66,20 @@ class TradieController extends Controller
                 if ($cnt > 0) {
                     $t->reviews_count = $cnt;
                     $t->average_rating = round($sum / $cnt, 1);
+                }
+
+                // Enrich missing contact info from Account Service (only if missing)
+                if ($t->account_id && (empty($t->email) || empty($t->phone_number))) {
+                    try {
+                        $accResp = $client->get('http://account-service:8000/api/internal/accounts/' . $t->account_id);
+                        if ($accResp->getStatusCode() === 200) {
+                            $acc = json_decode((string)$accResp->getBody(), true) ?: [];
+                            if (empty($t->email) && !empty($acc['email'] ?? null)) { $t->email = $acc['email']; }
+                            if (empty($t->phone_number) && !empty($acc['phone_number'] ?? null)) { $t->phone_number = $acc['phone_number']; }
+                        }
+                    } catch (\Throwable $e2) {
+                        // ignore enrichment failures
+                    }
                 }
             } catch (\Throwable $e) {
                 // Ignore and keep defaults
