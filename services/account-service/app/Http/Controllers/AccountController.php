@@ -29,12 +29,22 @@ class AccountController extends Controller
     public function register(Request $request)
     {
         $this->mergeJsonBody($request);
+        // Normalize possible phone field aliases from clients (e.g., phone, phoneNumber)
+        $payload = $request->all();
+        if (!isset($payload['phone_number'])) {
+            if (isset($payload['phoneNumber']) && !empty($payload['phoneNumber'])) {
+                $request->merge(['phone_number' => $payload['phoneNumber']]);
+            } elseif (isset($payload['phone']) && !empty($payload['phone'])) {
+                $request->merge(['phone_number' => $payload['phone']]);
+            }
+        }
         $this->validate($request, [
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'email' => 'required|email|unique:accounts',
             'password' => 'required|string',
             'role' => 'required|in:resident,tradie',
+            'phone_number' => 'nullable|string',
         ]);
 
         $user = new User();
@@ -48,7 +58,19 @@ class AccountController extends Controller
             'first_name' => $user->first_name,
         ]);
 
-        return response()->json(['message' => 'User registered successfully'], 201);
+        // Return created user for immediate client verification (non-breaking: adds field)
+        return response()->json([
+            'message' => 'User registered successfully',
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'status' => $user->status,
+            ]
+        ], 201);
     }
 
     public function login(Request $request)
@@ -109,6 +131,22 @@ class AccountController extends Controller
     public function getAccountById($id)
     {
         return response()->json(User::findOrFail($id));
+    }
+
+    public function getAccountByIdInternal($id)
+    {
+        // Internal endpoint for service-to-service communication
+        // Only return necessary fields for service integration
+        $user = User::findOrFail($id);
+        return response()->json([
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'role' => $user->role,
+            'status' => $user->status
+        ]);
     }
 
     public function updateAccountStatus($id, Request $request)
