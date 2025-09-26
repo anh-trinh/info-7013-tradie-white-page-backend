@@ -1,5 +1,6 @@
 # Prevent overwriting dependencies installed in image layer
 node_modules/
+vendor/
 .git
 .gitignore
 Dockerfile
