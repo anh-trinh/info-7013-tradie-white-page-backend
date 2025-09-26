@@ -1,12 +1,36 @@
-version: '3.8'
-
 networks:
   tradie-network:
     driver: bridge
 
 services:
+  # Frontend applications
+  mpa-frontend:
+    image: theanhtrinhngoc/tradie-mpa-frontend:latest
+    build:
+      context: ../info-7013-tradie-white-page-mpa-frontend
+      dockerfile: Dockerfile
+    container_name: tradie-mpa-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"   # adjust if your MPA image exposes a different port
+    networks:
+      - tradie-network
+
+  spa-frontend:
+    image: theanhtrinhngoc/tradie-spa-frontend:latest
+    build:
+      context: ../info-7013-tradie-white-page-spa-frontend
+      dockerfile: Dockerfile
+    container_name: tradie-spa-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173" # adjust if your SPA dev server/build serves on another port
+    networks:
+      - tradie-network
+
   api-gateway:
-    image: nginx:alpine
+    image: theanhtrinhngoc/tradie-api-gateway:latest
+    build: ./nginx
     container_name: api-gateway
     restart: unless-stopped
     ports:
@@ -28,24 +52,26 @@ services:
     image: rabbitmq:3.9-management-alpine
     container_name: message-broker
     ports:
-      - "5672:5672"
+      - "${RABBITMQ_PORT:-5672}:5672"
       - "15672:15672"
     networks:
       - tradie-network
 
   websocket-service:
+    image: theanhtrinhngoc/tradie-websocket-service:latest
     build: ./services/websocket-service
     container_name: websocket-service
     depends_on:
       - message-broker
     environment:
-      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     ports:
       - "4000:4000"
     networks:
       - tradie-network
 
   notification-service:
+    image: theanhtrinhngoc/tradie-notification-service:latest
     build: ./services/notification-service
     container_name: notification-service
     depends_on:
@@ -54,10 +80,10 @@ services:
     environment:
       - DB_HOST=notification-db
       - DB_PORT=3306
-      - DB_NAME=notification
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+      - DB_NAME=${NOTIFICATION_MYSQL_DATABASE}
+      - DB_USER=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     networks:
       - tradie-network
 
@@ -66,11 +92,11 @@ services:
     container_name: notification-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: notification
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: ${NOTIFICATION_MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
     ports:
-      - "3307:3306"
+      - "${NOTIFICATION_DB_PORT:-3307}:3306"
     volumes:
       - notification-db-data:/var/lib/mysql
     networks:
@@ -81,11 +107,11 @@ services:
     container_name: booking-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=booking_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${BOOKING_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3308:3306"
+      - "${BOOKING_DB_PORT:-3308}:3306"
     volumes:
       - booking-db-data:/var/lib/mysql
     networks:
@@ -105,6 +131,7 @@ services:
 
 
   booking-service:
+    image: theanhtrinhngoc/tradie-booking-service:latest
     build: ./services/booking-service
     container_name: booking-service
     depends_on:
@@ -113,19 +140,21 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=booking-db
       - DB_PORT=3306
-      - DB_DATABASE=booking_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - ACCOUNT_SERVICE_URL=http://account-service:8000
+      - DB_DATABASE=${BOOKING_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ACCOUNT_SERVICE_URL=http://account-service:${ACCOUNT_SERVICE_PORT}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - tradie-network
 
   review-service:
+    image: theanhtrinhngoc/tradie-review-service:latest
     build: ./services/review-service
     container_name: review-service
     restart: unless-stopped
     environment:
-      - DATABASE_URL=mysql+pymysql://root:root@review-db:3306/review_db
+      - DATABASE_URL=mysql+pymysql://${DB_USERNAME}:${DB_PASSWORD}@review-db:3306/${REVIEW_MYSQL_DATABASE}
     ports:
       - "8001:8000"
     networks:
@@ -138,11 +167,11 @@ services:
     container_name: review-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=review_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${REVIEW_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3309:3306"
+      - "${REVIEW_DB_PORT:-3309}:3306"
     volumes:
       - review-db-data:/var/lib/mysql
     networks:
@@ -153,17 +182,18 @@ services:
     container_name: account-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=account_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${ACCOUNT_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3310:3306"
+      - "${ACCOUNT_DB_PORT:-3310}:3306"
     volumes:
       - account-db-data:/var/lib/mysql
     networks:
       - tradie-network
 
   account-service:
+    image: theanhtrinhngoc/tradie-account-service:latest
     build: ./services/account-service
     container_name: account-service
     depends_on:
@@ -172,9 +202,10 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=account-db
       - DB_PORT=3306
-      - DB_DATABASE=account_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_DATABASE=${ACCOUNT_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - tradie-network
 
@@ -183,36 +214,41 @@ services:
     container_name: tradie-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=tradie_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3311:3306"
+      - "${TRADIE_DB_PORT:-3311}:3306"
     volumes:
       - tradie-db-data:/var/lib/mysql
     networks:
       - tradie-network
 
   tradie-service:
+    image: theanhtrinhngoc/tradie-tradie-service:latest
     build: ./services/tradie-service
     container_name: tradie-service
     depends_on:
       - tradie-db
+    ports:
+      - "${TRADIE_SERVICE_PORT:-3000}:3000"
     environment:
       - DB_CONNECTION=mysql
       - DB_HOST=tradie-db
       - DB_PORT=3306
-      - DB_DATABASE=tradie_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - RABBITMQ_HOST=message-broker
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASS=guest
+      - DB_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - tradie-network
 
   tradie-worker:
+    image: theanhtrinhngoc/tradie-tradie-worker:latest
     build: ./services/tradie-service
     container_name: tradie-worker
     restart: unless-stopped
@@ -224,13 +260,14 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=tradie-db
       - DB_PORT=3306
-      - DB_DATABASE=tradie_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - RABBITMQ_HOST=message-broker
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASS=guest
+      - DB_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
+      - JWT_SECRET=${JWT_SECRET}
     networks:
       - tradie-network
 

@@ -1,9 +1,13 @@
 FROM php:8.2-cli-alpine
 WORKDIR /var/www/html
 
-# PHP extensions
-RUN apk add --no-cache oniguruma-dev linux-headers \
- && docker-php-ext-install pdo pdo_mysql mbstring
+# PHP extensions (retry to mitigate transient Alpine mirror issues) + cleanup build deps
+RUN set -eux; \
+	for i in 1 2 3; do \
+		apk update && apk add --no-cache --virtual .build-deps linux-headers oniguruma-dev && break || sleep 4; \
+	done; \
+	docker-php-ext-install pdo pdo_mysql mbstring sockets; \
+	apk del .build-deps
 
 # Install Composer
 RUN apk add --no-cache curl git unzip \
