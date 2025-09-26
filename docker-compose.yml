@@ -28,7 +28,7 @@ services:
     image: rabbitmq:3.9-management-alpine
     container_name: message-broker
     ports:
-      - "5672:5672"
+      - "${RABBITMQ_PORT:-5672}:5672"
       - "15672:15672"
     networks:
       - tradie-network
@@ -39,7 +39,7 @@ services:
     depends_on:
       - message-broker
     environment:
-      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     ports:
       - "4000:4000"
     networks:
@@ -54,10 +54,10 @@ services:
     environment:
       - DB_HOST=notification-db
       - DB_PORT=3306
-      - DB_NAME=notification
-      - DB_USER=root
-      - DB_PASSWORD=root
-      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+      - DB_NAME=${NOTIFICATION_MYSQL_DATABASE}
+      - DB_USER=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_URL=amqp://${RABBITMQ_USER}:${RABBITMQ_PASS}@${RABBITMQ_HOST}:${RABBITMQ_PORT}
     networks:
       - tradie-network
 
@@ -66,11 +66,11 @@ services:
     container_name: notification-db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: notification
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_ROOT_HOST: "%"
+      MYSQL_DATABASE: ${NOTIFICATION_MYSQL_DATABASE}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_ROOT_HOST: ${MYSQL_ROOT_HOST}
     ports:
-      - "3307:3306"
+      - "${NOTIFICATION_DB_PORT:-3307}:3306"
     volumes:
       - notification-db-data:/var/lib/mysql
     networks:
@@ -81,11 +81,11 @@ services:
     container_name: booking-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=booking_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${BOOKING_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3308:3306"
+      - "${BOOKING_DB_PORT:-3308}:3306"
     volumes:
       - booking-db-data:/var/lib/mysql
     networks:
@@ -113,10 +113,10 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=booking-db
       - DB_PORT=3306
-      - DB_DATABASE=booking_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - ACCOUNT_SERVICE_URL=http://account-service:8000
+      - DB_DATABASE=${BOOKING_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - ACCOUNT_SERVICE_URL=http://account-service:${ACCOUNT_SERVICE_PORT}
     networks:
       - tradie-network
 
@@ -125,7 +125,7 @@ services:
     container_name: review-service
     restart: unless-stopped
     environment:
-      - DATABASE_URL=mysql+pymysql://root:root@review-db:3306/review_db
+      - DATABASE_URL=mysql+pymysql://${DB_USERNAME}:${DB_PASSWORD}@review-db:3306/${REVIEW_MYSQL_DATABASE}
     ports:
       - "8001:8000"
     networks:
@@ -138,11 +138,11 @@ services:
     container_name: review-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=review_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${REVIEW_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3309:3306"
+      - "${REVIEW_DB_PORT:-3309}:3306"
     volumes:
       - review-db-data:/var/lib/mysql
     networks:
@@ -153,11 +153,11 @@ services:
     container_name: account-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=account_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${ACCOUNT_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3310:3306"
+      - "${ACCOUNT_DB_PORT:-3310}:3306"
     volumes:
       - account-db-data:/var/lib/mysql
     networks:
@@ -172,9 +172,9 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=account-db
       - DB_PORT=3306
-      - DB_DATABASE=account_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
+      - DB_DATABASE=${ACCOUNT_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
     networks:
       - tradie-network
 
@@ -183,11 +183,11 @@ services:
     container_name: tradie-db
     restart: unless-stopped
     environment:
-      - MYSQL_DATABASE=tradie_db
-      - MYSQL_ROOT_PASSWORD=root
-      - MYSQL_ROOT_HOST=%
+      - MYSQL_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_ROOT_HOST=${MYSQL_ROOT_HOST}
     ports:
-      - "3311:3306"
+      - "${TRADIE_DB_PORT:-3311}:3306"
     volumes:
       - tradie-db-data:/var/lib/mysql
     networks:
@@ -202,13 +202,13 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=tradie-db
       - DB_PORT=3306
-      - DB_DATABASE=tradie_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - RABBITMQ_HOST=message-broker
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASS=guest
+      - DB_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
     networks:
       - tradie-network
 
@@ -224,13 +224,13 @@ services:
       - DB_CONNECTION=mysql
       - DB_HOST=tradie-db
       - DB_PORT=3306
-      - DB_DATABASE=tradie_db
-      - DB_USERNAME=root
-      - DB_PASSWORD=root
-      - RABBITMQ_HOST=message-broker
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_USER=guest
-      - RABBITMQ_PASS=guest
+      - DB_DATABASE=${TRADIE_MYSQL_DATABASE}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - RABBITMQ_HOST=${RABBITMQ_HOST}
+      - RABBITMQ_PORT=${RABBITMQ_PORT}
+      - RABBITMQ_USER=${RABBITMQ_USER}
+      - RABBITMQ_PASS=${RABBITMQ_PASS}
     networks:
       - tradie-network
 

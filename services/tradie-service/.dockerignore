@@ -1,0 +1,8 @@
+# Prevent overwriting dependencies installed in image layer
+node_modules/
+.git
+.gitignore
+Dockerfile
+# Keep composer files so build can COPY them
+# composer.lock
+# composer.json
