@@ -47,12 +47,12 @@ class ListenForRatingUpdates extends Command
                     $profile = TradieProfile::where('account_id', $data['tradie_account_id'])->first();
 
                     if ($profile) {
-                        // Logic tính toán rating trung bình mới
+                        // Calculate new average rating
                         $newRating = (float) $data['rating'];
                         $oldAvg = (float) $profile->average_rating;
                         $oldCount = (int) $profile->reviews_count;
 
-                        // Tính rating trung bình mới
+                        // Calculate new average rating
                         $newAvg = $oldCount > 0
                             ? (($oldAvg * $oldCount) + $newRating) / ($oldCount + 1)
                             : $newRating;

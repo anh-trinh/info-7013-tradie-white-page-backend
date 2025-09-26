@@ -1,53 +1,41 @@
-# Tradie White Page – Backend
+# Tradie White Page Project
 
-Production-like, containerized microservices backend with centralized API Gateway, JWT auth, durable databases, and asynchronous messaging (RabbitMQ).
+## Quick Start Guide
 
-Gateway URL: http://localhost:8888
+**Requirements:** Docker and Docker Compose installed on your system.
 
+### Getting Started
 
-## Architecture
+1. Clone this repository to your local machine
+2. Navigate to the project root directory
+3. Run the following command to start the entire system:
+   ```bash
+   docker compose up -d
+   ```
+4. The system will take a few minutes to initialize. Once complete:
+   * Access the application at: `http://localhost:8888`
+   * Access RabbitMQ management UI at: `http://localhost:15672` (username: `guest`, password: `guest`)
 
-- API Gateway: NGINX reverse proxy, centralized auth using auth_request (delegated to Account Service).
-- Services:
-	- account-service (Lumen/PHP): authentication, user profiles, admin account management.
-	- booking-service (Lumen/PHP): quotes, bookings, admin job operations.
-	- tradie-service (Lumen/PHP): service categories, search, admin category management.
-	- review-service (FastAPI/Python): reviews CRUD and admin moderation.
-	- notification-service (NestJS/Node): background consumer for domain events via RabbitMQ.
-- Datastores: Dedicated MySQL per service with named Docker volumes for persistence.
-- Messaging: RabbitMQ (management UI on 15672).
+### System Architecture
 
-All traffic flows through NGINX at :8888. Protected routes are authenticated centrally before requests reach services.
+Production-ready microservices backend with:
 
+- **API Gateway**: NGINX reverse proxy with centralized JWT authentication
+- **Core Services**:
+  - `account-service` (PHP/Lumen): User authentication and profiles
+  - `booking-service` (PHP/Lumen): Booking management and quotes  
+  - `tradie-service` (PHP/Lumen): Service categories and search
+  - `review-service` (Python/FastAPI): Review system with moderation
+  - `notification-service` (Node.js/NestJS): Background event processing
+- **Data Layer**: Dedicated MySQL databases per service with persistent volumes
+- **Messaging**: RabbitMQ for asynchronous communication
 
-## Prerequisites
-# Tradie White Page – Backend
-
-Production-like, containerized microservices backend with centralized API Gateway, JWT auth, durable databases, and asynchronous messaging (RabbitMQ).
-
-Gateway URL: http://localhost:8888 (all APIs go through this port)
-
-
-## Architecture
-
-- API Gateway: NGINX reverse proxy, centralized auth using auth_request (delegated to Account Service).
-- Services:
-	- account-service (Lumen/PHP): authentication, user profiles, admin account management.
-	- booking-service (Lumen/PHP): quotes, bookings, admin job operations.
-	- tradie-service (Lumen/PHP): service categories, search, admin category management.
-	- review-service (FastAPI/Python): reviews CRUD and admin moderation.
-	- notification-service (NestJS/Node): background consumer for domain events via RabbitMQ.
-- Datastores: Dedicated MySQL per service with named Docker volumes for persistence (root/root; intra-network root access enabled).
-- Messaging: RabbitMQ (management UI on 15672).
-
-All traffic flows through NGINX at :8888. Protected routes are authenticated centrally before requests reach services.
-
+All API requests flow through port `8888`. Protected endpoints require JWT authentication.
 
 ## Prerequisites
 
 - Docker and Docker Compose
-- Ports available on host:
-	- 8888 (gateway), 5672/15672 (RabbitMQ), 3307..3311 (MySQLs), 8001 (review docs)
+- Available ports: 8888 (gateway), 5672/15672 (RabbitMQ), 3307-3311 (databases), 8001 (API docs)
 
 
 ## Quick start
@@ -60,163 +48,143 @@ docker compose up -d --build
 2) Verify services
 - Gateway: http://localhost:8888
 - RabbitMQ UI: http://localhost:15672 (guest/guest)
-- Review API docs (FastAPI): http://localhost:8001/docs (service also accessible via gateway)
 
-3) Seed or register first user
-- Use Accounts API to register and login (see Auth below).
+## Development Setup
 
-4) Start frontends (on host machine)
+1. **Start the backend services:**
+   ```bash
+   docker compose up -d
+   ```
 
-- MPA (server-rendered, proxied at /, /search, /tradie, /login, /register, /admin/login)
-	- Must run on host port 8000 to match nginx proxy
-	- Example (Laravel/Lumen dev server):
-		```bash
-		php -S 0.0.0.0:8000 -t public
-		```
+2. **Verify services are running:**
+   - Main application: http://localhost:8888
+   - RabbitMQ Management: http://localhost:15672 (guest/guest)
+   - Review API Documentation: http://localhost:8001/docs
 
-- SPA (Vite/React, proxied at /dashboard, /tradie-dashboard, /admin)
-	- Must run on host port 5173 (Vite default)
-	- Example:
-		```bash
-		npm install
-		npm run dev
-		```
-	- Ensure the dev server binds to 0.0.0.0 if needed so NGINX can reach it via host.docker.internal
+3. **Create first user account:**
+   Use the Account API to register and login (see Authentication section below)
 
+4. **Frontend Development** (if applicable):
+   - MPA Frontend: Should run on port 8000 and be accessible via gateway
+   - SPA Frontend: Should run on port 5173 (Vite default) and be accessible via gateway
 
-## Services & Ports
+## Service Ports
 
-- api-gateway (NGINX): 8888
-- account-service (PHP): internal 8000 (use gateway)
-- booking-service (PHP): internal 80 (use gateway)
-- tradie-service (PHP): internal 8000 (use gateway)
-- review-service (Python): 8000 (exposed as host 8001)
-- notification-service (NestJS): RMQ microservice, no HTTP port by default
-- RabbitMQ: 5672 (AMQP), 15672 (UI)
-- MySQL (host ports):
-	- notification-db: 3307
-	- booking-db: 3308
-	- review-db: 3309
-	- account-db: 3310
-	- tradie-db: 3311
+**External Access:**
+- **API Gateway**: `8888` (main entry point)
+- **RabbitMQ UI**: `15672` 
+- **Review API Docs**: `8001`
 
-Tip: Connect with MySQL Workbench using Host: 127.0.0.1, Port above, User/Password root/root, and Database name per service. Compose sets MYSQL_ROOT_HOST=% so services can connect as root from other containers.
+**Database Ports** (for direct access):
+- notification-db: `3307`
+- booking-db: `3308`  
+- review-db: `3309`
+- account-db: `3310`
+- tradie-db: `3311`
 
+*Database credentials: username `root`, password `root`*
 
-## Authentication (Centralized at Gateway)
+**Internal Services** (accessed via gateway):
+- account-service, booking-service, tradie-service, review-service
+- notification-service (RabbitMQ consumer only)
 
-Flow:
-1) Client calls public login: POST /api/accounts/login (no token required).
-2) On protected routes, NGINX calls internal /_auth_verify → Account Service validates JWT.
-3) If token is valid, NGINX forwards the request to the target service and injects X-User-Id, X-User-Role from the sub-request. The original Authorization header is forwarded where needed (e.g., account-service).
+## Authentication
 
-Public endpoints
-- POST /api/accounts/login
-- POST /api/accounts/register
+The system uses centralized JWT authentication via the API Gateway:
 
-Protected examples (via gateway)
-- /api/accounts/* (except login/register)
-- /api/bookings, /api/quotes
-- /api/tradies, /api/services
-- /api/reviews, /api/admin/reviews
-- /api/admin/* (admin-only)
+1. **Public endpoints** (no authentication required):
+   - `POST /api/accounts/login`
+   - `POST /api/accounts/register`
 
-Admin enforcement
-- account-service: admin routes guarded by auth + custom admin middleware.
-- booking-service & tradie-service: custom AdminMiddleware checks X-User-Role == admin (header injected by gateway).
-- review-service: FastAPI dependency requires X-User-Role == admin.
+2. **Protected endpoints** (JWT token required):
+   - `/api/accounts/*` (except login/register)
+   - `/api/bookings`, `/api/quotes`
+   - `/api/tradies`, `/api/services`
+   - `/api/reviews`
 
+3. **Admin endpoints** (admin role required):
+   - `/api/admin/*`
+   - `/api/admin/reviews`
 
-## Messaging (RabbitMQ)
+**Authentication Flow:**
+1. Client calls `POST /api/accounts/login` to get JWT token
+2. For protected routes, include token in `Authorization: Bearer <token>` header
+3. NGINX gateway validates token with account-service before forwarding requests
+4. Valid requests include user context (`X-User-Id`, `X-User-Role`) for downstream services
 
-- Exchange: default (empty), Queue: notifications_queue (durable)
-- Publishers:
-	- account-service: account_registered { email, first_name }
-	- booking-service: booking_created { booking_id }, job_completed { booking_id }
-	- review-service: review_submitted { review_id, rating }
-- Consumer:
-	- notification-service: NestJS RMQ microservice with handlers for above patterns
+## Background Processing
 
-Implementation notes
-- Lumen publishers send body with fields: { pattern, data }
-- FastAPI publisher sends same shape for interoperability.
-- Notification service listens with @EventPattern('<pattern>').
+The system uses **RabbitMQ** for asynchronous communication:
 
+- **Publishers**: account-service, booking-service, review-service
+- **Consumer**: notification-service
+- **Events**: user registration, booking creation, job completion, review submission
+- **Management UI**: http://localhost:15672 (guest/guest)
 
-## Persistence
+## Data Persistence
 
-Each MySQL service mounts a named Docker volume at /var/lib/mysql. Volumes are declared at the bottom of docker-compose.yml (e.g., booking-db-data). Data survives container restarts.
+Each service uses a dedicated MySQL database with persistent Docker volumes:
+- Data survives container restarts and updates
+- Direct database access available on ports 3307-3311
+- Credentials: `root/root`
 
+## API Testing
 
-## End-to-end test guide (quick)
-
-Prereqs: Docker, Docker Compose. For parsing JSON, jq is recommended (sudo apt install jq).
-
-1) Register two users (tradie and resident)
+**Quick test - Register a user:**
 ```bash
-curl -sS -X POST http://localhost:8888/api/accounts/register \
-	-H 'Content-Type: application/json' \
-	-d '{"first_name":"Mike","last_name":"Johnson","email":"mike.tradie@test.com","password":"password123","role":"tradie"}'
+curl -X POST http://localhost:8888/api/accounts/register \
+  -H 'Content-Type: application/json' \
+  -d '{"first_name":"John","last_name":"Doe","email":"john@example.com","password":"password123","role":"tradie"}'
+```
 
-curl -sS -X POST http://localhost:8888/api/accounts/register \
-	-H 'Content-Type: application/json' \
-	-d '{"first_name":"Rose","last_name":"Nguyen","email":"rose.resident@test.com","password":"password123","role":"resident"}'
+**Login to get JWT token:**
+```bash
+curl -X POST http://localhost:8888/api/accounts/login \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"john@example.com","password":"password123"}'
 ```
 
 2) Login and capture tokens
 ```bash
 TRADIE_TOKEN=$(curl -sS -X POST http://localhost:8888/api/accounts/login \
-	-H 'Content-Type: application/json' \
-	-d '{"email":"mike.tradie@test.com","password":"password123"}' | jq -r .token)
+## Troubleshooting
 
-RESIDENT_TOKEN=$(curl -sS -X POST http://localhost:8888/api/accounts/login \
-	-H 'Content-Type: application/json' \
-	-d '{"email":"rose.resident@test.com","password":"password123"}' | jq -r .token)
+**Common Issues:**
+
+1. **Port conflicts**: Ensure ports 8888, 5672, 15672, 3307-3311, 8001 are available
+2. **Services not starting**: Check logs with `docker compose logs <service-name>`
+3. **Authentication errors**: Verify JWT token is included in Authorization header
+4. **Database connection issues**: Ensure MySQL containers are fully started before services
+
+**Useful Commands:**
+```bash
+# View all service logs
+docker compose logs
+
+# Restart a specific service
+docker compose restart <service-name>
+
+# View service status
+docker compose ps
+
+# Stop all services
+docker compose down
+
+# Start with fresh databases (removes all data)
+docker compose down -v && docker compose up -d
 ```
 
-3) Create quote (resident → tradie)
-```bash
-TRADIE_ID=$(curl -sS -X POST http://localhost:8888/api/accounts/login \
-	-H 'Content-Type: application/json' \
-	-d '{"email":"mike.tradie@test.com","password":"password123"}' | jq -r .user.id)
+## Development Notes
 
-QUOTE_ID=$(curl -sS -X POST http://localhost:8888/api/quotes \
-	-H "Authorization: Bearer $RESIDENT_TOKEN" -H 'Content-Type: application/json' \
-	-d '{"tradie_account_id":'"$TRADIE_ID"',"job_description":"Fix leaking pipe","service_address":"123 Test St, Sydney","service_postcode":"2000"}' | jq -r .id)
-```
+- **Default Admin Account**: username `admin`, password `admin`
+- **JWT Secret**: Automatically configured via environment variables
+- **Database Schema**: Auto-migrated on service startup
+- **Hot Reload**: Backend services restart automatically on code changes (if volumes are mounted)
+- **API Documentation**: FastAPI services provide interactive docs at `/docs` endpoints
 
-4) Accept quote (tradie)
-```bash
-curl -sS -X PUT http://localhost:8888/api/quotes/$QUOTE_ID/accept \
-	-H "Authorization: Bearer $TRADIE_TOKEN"
-```
+## License
 
-5) Create booking (resident)
-```bash
-BOOKING_ID=$(curl -sS -X POST http://localhost:8888/api/bookings \
-	-H "Authorization: Bearer $RESIDENT_TOKEN" -H 'Content-Type: application/json' \
-	-d '{"quote_id":'"$QUOTE_ID"',"final_price":120.5,"scheduled_at":"2025-09-22T10:30:00Z"}' | jq -r .id)
-```
-
-6) Complete booking (tradie)
-```bash
-curl -sS -X PUT http://localhost:8888/api/bookings/$BOOKING_ID/status \
-	-H "Authorization: Bearer $TRADIE_TOKEN" -H 'Content-Type: application/json' \
-	-d '{"status":"completed"}'
-```
-
-7) Post review (resident)
-```bash
-RESIDENT_ID=$(curl -sS http://localhost:8888/api/accounts/me -H "Authorization: Bearer $RESIDENT_TOKEN" | jq -r .id)
-
-curl -sS -X POST http://localhost:8888/api/reviews \
-	-H "Authorization: Bearer $RESIDENT_TOKEN" -H 'Content-Type: application/json' \
-	-d '{"booking_id":'"$BOOKING_ID"',"resident_account_id":'"$RESIDENT_ID"',"tradie_account_id":'"$TRADIE_ID"',"rating":5,"comment":"Great job!"}'
-```
-
-8) Check events in notification-service logs
-```bash
-docker compose logs --no-color notification-service | tail -n 50
+This project is for educational purposes.
 ```
 
 Admin quick checks

@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use App\Models\User;
+use Carbon\Carbon;
 
 class AccountsTableSeeder extends Seeder
 {
@@ -30,7 +31,8 @@ class AccountsTableSeeder extends Seeder
                 'phone_number' => null,
                 'role'         => 'admin',
                 'status'       => 'active',
-                'updated_at'   => now(),
+                'updated_at'   => Carbon::now(),
+                'created_at'   => Carbon::now(),
             ]
         );
 

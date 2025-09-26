@@ -103,6 +103,7 @@ class AccountController extends Controller
             return response()->json(['message' => 'Account suspended'], 403);
         }
 
+        // Attempt JWT login (will throw if misconfigured)
         $token = Auth::login($user);
         return $this->respondWithToken($token);
     }

@@ -1,9 +1,13 @@
 FROM php:8.2-cli-alpine
 WORKDIR /var/www/html
 
-# Install PHP extensions required by Lumen (PDO, MySQL, sockets, mbstring)
-RUN apk add --no-cache linux-headers oniguruma-dev \
- && docker-php-ext-install pdo pdo_mysql sockets mbstring
+# Install PHP extensions required by Lumen (PDO, MySQL, sockets, mbstring) with retry + cleanup
+RUN set -eux; \
+	for i in 1 2 3; do \
+		apk update && apk add --no-cache --virtual .build-deps linux-headers oniguruma-dev && break || sleep 4; \
+	done; \
+	docker-php-ext-install pdo pdo_mysql sockets mbstring; \
+	apk del .build-deps
 
 # Install Composer
 RUN apk add --no-cache curl git unzip \
@@ -14,7 +18,7 @@ RUN apk add --no-cache curl git unzip \
 # Copy application source (including vendor if present)
 COPY . .
 # Install PHP dependencies at build time
-RUN composer update --no-dev --prefer-dist --no-interaction --ignore-platform-req=ext-sockets \
+RUN composer update --no-dev --prefer-dist --no-interaction \
  && composer dump-autoload -o
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
