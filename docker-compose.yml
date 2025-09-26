@@ -33,6 +33,18 @@ services:
     networks:
       - tradie-network
 
+  websocket-service:
+    build: ./services/websocket-service
+    container_name: websocket-service
+    depends_on:
+      - message-broker
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@message-broker:5672
+    ports:
+      - "4000:4000"
+    networks:
+      - tradie-network
+
   notification-service:
     build: ./services/notification-service
     container_name: notification-service
@@ -104,6 +116,7 @@ services:
       - DB_DATABASE=booking_db
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - ACCOUNT_SERVICE_URL=http://account-service:8000
     networks:
       - tradie-network
 
@@ -192,6 +205,32 @@ services:
       - DB_DATABASE=tradie_db
       - DB_USERNAME=root
       - DB_PASSWORD=root
+      - RABBITMQ_HOST=message-broker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
+    networks:
+      - tradie-network
+
+  tradie-worker:
+    build: ./services/tradie-service
+    container_name: tradie-worker
+    restart: unless-stopped
+    command: php artisan ratings:listen
+    depends_on:
+      - tradie-db
+      - message-broker
+    environment:
+      - DB_CONNECTION=mysql
+      - DB_HOST=tradie-db
+      - DB_PORT=3306
+      - DB_DATABASE=tradie_db
+      - DB_USERNAME=root
+      - DB_PASSWORD=root
+      - RABBITMQ_HOST=message-broker
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_USER=guest
+      - RABBITMQ_PASS=guest
     networks:
       - tradie-network
 

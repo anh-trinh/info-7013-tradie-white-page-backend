@@ -5,11 +5,14 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use App\Models\Quote;
 use App\Models\Booking;
+use App\Models\QuoteMessage;
 
 class BookingSeeder extends Seeder
 {
     public function run(): void
     {
+        // Clear old data to avoid orphaned messages sticking to new quote IDs
+        QuoteMessage::truncate();
         Quote::truncate();
         Booking::truncate();
 

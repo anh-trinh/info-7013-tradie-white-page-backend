@@ -20,6 +20,10 @@ $router->group(['prefix' => 'api'], function () use ($router) {
     $router->get('bookings', 'BookingController@getJobs');
     $router->put('bookings/{id}/status', 'BookingController@updateJobStatus');
     $router->put('quotes/{id}/accept', 'BookingController@acceptQuote');
+    
+    // Quote negotiate: get detail with messages, add message
+    $router->get('quotes/{id}', 'BookingController@getQuoteById');
+    $router->post('quotes/{id}/messages', 'BookingController@addQuoteMessage');
 
     $router->group(['prefix' => 'admin', 'middleware' => 'admin'], function () use ($router) {
         $router->get('bookings', 'BookingController@getAllJobsForAdmin');

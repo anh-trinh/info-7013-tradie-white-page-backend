@@ -8,8 +8,11 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $this->call([
-            BookingSeeder::class,
-        ]);
+        // Only seed demo data when explicitly enabled
+        if (env('SEED_DEMO', false)) {
+            $this->call([
+                BookingSeeder::class,
+            ]);
+        }
     }
 }

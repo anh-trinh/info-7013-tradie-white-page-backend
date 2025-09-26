@@ -5,18 +5,46 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 use App\Services\RabbitMQService;
 
 class AccountController extends Controller
 {
+    /**
+     * Ensure JSON payloads are merged into the request input for Lumen validation
+     */
+    private function mergeJsonBody(Request $request): void
+    {
+        $contentType = $request->headers->get('Content-Type', '');
+        $raw = $request->getContent();
+        $looksJson = is_string($raw) && strlen($raw) > 0 && (str_starts_with(trim($raw), '{') || str_starts_with(trim($raw), '['));
+
+        if (stripos($contentType, 'application/json') !== false || $looksJson) {
+            $decoded = json_decode($raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $request->merge($decoded);
+            }
+        }
+    }
     public function register(Request $request)
     {
+        $this->mergeJsonBody($request);
+        // Normalize possible phone field aliases from clients (e.g., phone, phoneNumber)
+        $payload = $request->all();
+        if (!isset($payload['phone_number'])) {
+            if (isset($payload['phoneNumber']) && !empty($payload['phoneNumber'])) {
+                $request->merge(['phone_number' => $payload['phoneNumber']]);
+            } elseif (isset($payload['phone']) && !empty($payload['phone'])) {
+                $request->merge(['phone_number' => $payload['phone']]);
+            }
+        }
         $this->validate($request, [
             'first_name' => 'required|string',
             'last_name' => 'required|string',
             'email' => 'required|email|unique:accounts',
             'password' => 'required|string',
             'role' => 'required|in:resident,tradie',
+            'phone_number' => 'nullable|string',
         ]);
 
         $user = new User();
@@ -30,22 +58,52 @@ class AccountController extends Controller
             'first_name' => $user->first_name,
         ]);
 
-        return response()->json(['message' => 'User registered successfully'], 201);
+        // Return created user for immediate client verification (non-breaking: adds field)
+        return response()->json([
+            'message' => 'User registered successfully',
+            'user' => [
+                'id' => $user->id,
+                'first_name' => $user->first_name,
+                'last_name' => $user->last_name,
+                'email' => $user->email,
+                'phone_number' => $user->phone_number,
+                'role' => $user->role,
+                'status' => $user->status,
+            ]
+        ], 201);
     }
 
     public function login(Request $request)
     {
-        $this->validate($request, [
+        $this->mergeJsonBody($request);
+        // Extract credentials whether sent as form-data or raw JSON
+        $payload = $request->all();
+        if (empty($payload)) {
+            $decoded = json_decode($request->getContent() ?? '', true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $payload = $decoded;
+            }
+        }
+
+        $validator = Validator::make($payload, [
             'email' => 'required|email',
             'password' => 'required|string',
         ]);
 
-        $credentials = $request->only(['email', 'password']);
-
-        if (! $token = Auth::attempt($credentials)) {
-            return response()->json(['message' => 'Unauthorized'], 401);
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
         }
 
+        // Manual auth to enforce status check (prevent suspended accounts from logging in)
+        $user = User::where('email', $payload['email'])->first();
+        if (!$user || !Hash::check($payload['password'], $user->password)) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+        if (($user->status ?? 'active') !== 'active') {
+            return response()->json(['message' => 'Account suspended'], 403);
+        }
+
+        $token = Auth::login($user);
         return $this->respondWithToken($token);
     }
 
@@ -56,6 +114,26 @@ class AccountController extends Controller
 
     public function updateProfile(Request $request)
     {
+        // Ensure JSON body is merged for validation and input access
+        $this->mergeJsonBody($request);
+
+        // Normalize possible phone field aliases from clients (e.g., phone, phoneNumber)
+        $payload = $request->all();
+        if (!isset($payload['phone_number'])) {
+            if (isset($payload['phoneNumber']) && !empty($payload['phoneNumber'])) {
+                $request->merge(['phone_number' => $payload['phoneNumber']]);
+            } elseif (isset($payload['phone']) && !empty($payload['phone'])) {
+                $request->merge(['phone_number' => $payload['phone']]);
+            }
+        }
+
+        // Optional validation for updatable fields
+        $this->validate($request, [
+            'first_name' => 'sometimes|string',
+            'last_name' => 'sometimes|string',
+            'phone_number' => 'nullable|string',
+        ]);
+
         $user = Auth::user();
         $user->fill($request->only(['first_name','last_name','phone_number']));
         $user->save();
@@ -65,6 +143,18 @@ class AccountController extends Controller
     public function getAllAccounts(Request $request)
     {
         $query = User::query();
+        // Support filtering by a comma-separated list of IDs: ?ids=1,2,3
+        if ($request->filled('ids')) {
+            $ids = collect(explode(',', (string)$request->input('ids')))
+                ->map(fn($v) => (int)trim($v))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            if (!empty($ids)) {
+                $query->whereIn('id', $ids);
+            }
+        }
         if ($request->has('role')) {
             $query->where('role', $request->input('role'));
         }
@@ -74,6 +164,40 @@ class AccountController extends Controller
     public function getAccountById($id)
     {
         return response()->json(User::findOrFail($id));
+    }
+
+    public function getAccountByIdInternal($id)
+    {
+        // Internal endpoint for service-to-service communication
+        // Only return necessary fields for service integration
+        $user = User::findOrFail($id);
+        return response()->json([
+            'id' => $user->id,
+            'first_name' => $user->first_name,
+            'last_name' => $user->last_name,
+            'email' => $user->email,
+            'phone_number' => $user->phone_number,
+            'role' => $user->role,
+            'status' => $user->status
+        ]);
+    }
+
+    public function getAccountsByIdsInternal(Request $request)
+    {
+        // Internal bulk endpoint: /api/internal/accounts?ids=1,2,3
+        $ids = collect(explode(',', (string)$request->query('ids', '')))
+            ->map(fn($v) => (int) trim($v))
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        if (empty($ids)) {
+            return response()->json([]);
+        }
+
+        $users = User::whereIn('id', $ids)->get(['id','first_name','last_name','email','phone_number','role','status']);
+        return response()->json($users);
     }
 
     public function updateAccountStatus($id, Request $request)
