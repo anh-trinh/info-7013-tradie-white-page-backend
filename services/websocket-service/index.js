@@ -1,7 +1,7 @@
 const { Server } = require('socket.io');
 const amqp = require('amqplib/callback_api');
 
-// Khởi tạo server Socket.IO trên port 4000, đồng bộ path '/ws/' với NGINX và frontend
+// Initialize Socket.IO server on port 4000, synchronized with NGINX and frontend path
 const IO_PORT = 4000;
 const io = new Server(IO_PORT, {
   cors: { origin: '*' },

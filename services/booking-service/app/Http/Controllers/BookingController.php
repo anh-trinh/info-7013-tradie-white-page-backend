@@ -126,7 +126,7 @@ class BookingController extends Controller
         return response()->json($quote);
     }
 
-    // Lấy chi tiết một quote, bao gồm cả lịch sử tin nhắn
+    // Get quote details including message history
     public function getQuoteById(Request $request, $id)
     {
         $quote = Quote::with(['messages' => function($q){ $q->orderBy('created_at','asc'); }])->findOrFail($id);
@@ -142,7 +142,7 @@ class BookingController extends Controller
         return response()->json($quote);
     }
 
-    // Thêm một tin nhắn (và giá đề xuất) vào quote
+    // Add a message (and price offer) to quote
     public function addQuoteMessage(Request $request, $id)
     {
         $this->validate($request, [

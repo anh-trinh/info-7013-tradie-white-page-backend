@@ -1,12 +1,36 @@
-version: '3.8'
-
 networks:
   tradie-network:
     driver: bridge
 
 services:
+  # Frontend applications
+  mpa-frontend:
+    image: theanhtrinhngoc/tradie-mpa-frontend:latest
+    build:
+      context: ../info-7013-tradie-white-page-mpa-frontend
+      dockerfile: Dockerfile
+    container_name: tradie-mpa-frontend
+    restart: unless-stopped
+    ports:
+      - "8080:80"   # adjust if your MPA image exposes a different port
+    networks:
+      - tradie-network
+
+  spa-frontend:
+    image: theanhtrinhngoc/tradie-spa-frontend:latest
+    build:
+      context: ../info-7013-tradie-white-page-spa-frontend
+      dockerfile: Dockerfile
+    container_name: tradie-spa-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173" # adjust if your SPA dev server/build serves on another port
+    networks:
+      - tradie-network
+
   api-gateway:
-    image: nginx:alpine
+    image: theanhtrinhngoc/tradie-api-gateway:latest
+    build: ./nginx
     container_name: api-gateway
     restart: unless-stopped
     ports:
@@ -34,6 +58,7 @@ services:
       - tradie-network
 
   websocket-service:
+    image: theanhtrinhngoc/tradie-websocket-service:latest
     build: ./services/websocket-service
     container_name: websocket-service
     depends_on:
@@ -46,6 +71,7 @@ services:
       - tradie-network
 
   notification-service:
+    image: theanhtrinhngoc/tradie-notification-service:latest
     build: ./services/notification-service
     container_name: notification-service
     depends_on:
@@ -105,6 +131,7 @@ services:
 
 
   booking-service:
+    image: theanhtrinhngoc/tradie-booking-service:latest
     build: ./services/booking-service
     container_name: booking-service
     depends_on:
@@ -122,6 +149,7 @@ services:
       - tradie-network
 
   review-service:
+    image: theanhtrinhngoc/tradie-review-service:latest
     build: ./services/review-service
     container_name: review-service
     restart: unless-stopped
@@ -165,6 +193,7 @@ services:
       - tradie-network
 
   account-service:
+    image: theanhtrinhngoc/tradie-account-service:latest
     build: ./services/account-service
     container_name: account-service
     depends_on:
@@ -196,6 +225,7 @@ services:
       - tradie-network
 
   tradie-service:
+    image: theanhtrinhngoc/tradie-tradie-service:latest
     build: ./services/tradie-service
     container_name: tradie-service
     depends_on:
@@ -218,6 +248,7 @@ services:
       - tradie-network
 
   tradie-worker:
+    image: theanhtrinhngoc/tradie-tradie-worker:latest
     build: ./services/tradie-service
     container_name: tradie-worker
     restart: unless-stopped
